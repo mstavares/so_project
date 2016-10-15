@@ -1,0 +1,87 @@
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <string.h>
+#include <stdlib.h>
+#include <uuid/uuid.h>
+#include <unistd.h>
+#include "transaction.h"
+
+/** Este array guarda a lista de empresas existentes na bolsa */
+char *title[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
+
+/**
+ * Esta função cria um UUID aleatoriamente
+ * Os UUID random têm a forma xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+ */
+char* random_id() {
+	static char str[37]; 
+	uuid_t uuid;
+	uuid_clear(uuid);
+	uuid_generate_random(uuid);
+	uuid_unparse(uuid,str); 
+	str[35] = '\0';
+	return str; 
+}
+
+/**
+ * Esta funcao devolve uma transacao gerada aleatoriamente
+ */
+transaction_t* create_transaction() {
+	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
+	strcpy(transaction->id, random_id());
+	strcpy(transaction->title, random_title());
+	transaction->value = random_value();
+	transaction->amount = random_amount();
+	strcpy(transaction->timestamp, get_timestamp());
+	return transaction;
+}
+
+/**
+ * Esta funcao imprime todos os detalhes de uma transação
+ */
+char* print_transaction(transaction_t *transaction) {
+	static char str[50];
+	sprintf(str, "%s %s %f %d %s", transaction->id, transaction->title,
+		transaction->value, transaction->amount, transaction->timestamp);
+	return str;
+}
+
+
+/**
+ * Esta função escolhe aleatoriamente uma empresa da lista de titulos
+ * O inteiro devolvido estará entre 0 e 9
+ */
+char* random_title() {
+	return title[rand() % 10];
+}
+
+/**
+ * Esta função escolhe aleatoriamente a quantidade de acoes a ser transacionada
+ * O inteiro devolvido estará entre 0 e 99
+ */
+int random_amount() {
+	return rand() % 100;
+}
+
+/**
+ * Esta função escolhe aleatoriamente o preço das ações
+ * O float devolvido estará entre 
+ */
+float random_value() {
+	return (float) (rand() % 20 - 10);
+}
+
+/**
+ * Esta função regista o momento em que a transação foi iniciada.
+ */
+char* get_timestamp() {
+	time_t now = time(NULL);
+	return asctime(localtime (&now));
+}
