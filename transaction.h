@@ -4,6 +4,7 @@
 
 extern char str[36];
 extern char *title[10];
+extern pthread_mutex_t lock;
 
 typedef struct {
 	char id[36];

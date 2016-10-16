@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include "transaction.h"
 
+pthread_mutex_t lock;
+
 /** Este array guarda a lista de empresas existentes na bolsa */
 char *title[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
 

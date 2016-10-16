@@ -17,7 +17,7 @@
 #define NUM_THREADS 4
 #define NUM_PIPES 4
 
-pthread_mutex_t lock;
+
 
 
 
@@ -25,13 +25,33 @@ pthread_mutex_t lock;
 void* teste(void* recebe) {
 	//strcat(ficheiro, ".txt");
 	
-	
 	int i;
+	FILE *f = fopen("teste.bin", "ab");
+		
 	for(i = 0; i < 10; i++) {
+		pthread_mutex_lock(&lock);
 		sleep(1);
 		transaction_t *transaction = create_transaction();
+		fwrite(transaction, sizeof(transaction_t), 1, f);;
+		printf("%s \n", print_transaction(transaction));
+		pthread_mutex_unlock(&lock);
+	}
+	
+	fclose(f);
+	
+	/*
+	printf("%s \n", "LER!!!");
+	
+	FILE *r = fopen("teste.bin", "rb");
+	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
+	
+	for(i = 0; i < 10; i++) {
+		fread(transaction, sizeof(transaction_t), 1, r);
 		printf("%s \n", print_transaction(transaction));
 	}
+	
+	fclose(r);
+	*/
 	
 	
 	/*
@@ -56,18 +76,18 @@ void start(int number_of_orders) {
 	int rc, t;
     int *taskids[NUM_THREADS];
     int i;
+        
     
     char* palavras[4] = {"thread1", "thread2", "thread3", "thread4"}; 
     
     for(i = 0; i < 4; i++) {
 		pthread_create(&threads[i], NULL, teste, (void *) palavras[i]);
-		//pthread_join(threads[i], NULL);
     }
-    
     
     for(i = 0; i < 4; i++) {
 		pthread_join(threads[i], NULL);
     }
+    
     
     
     
