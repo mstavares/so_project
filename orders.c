@@ -16,8 +16,6 @@
 #define NUM_THREADS 4
 #define NUM_PIPES 4
 
-pthread_mutex_t lock;
-
 void create_pipes() {
 	int i, ret_val;
 	char fifo[8];
@@ -37,35 +35,19 @@ void* teste(void* fifo) {
 	int i, fd;
 	char* ficheiro = (char*) fifo;
 	printf("imprime: %s \n", ficheiro);
-	FILE *f = fopen(ficheiro, "wb");
+	FILE *file_fifo = fopen(ficheiro, "wb");
 	for(;;) {
 		transaction_t *transaction = create_transaction();
-		fwrite(transaction, sizeof(transaction_t), 1, f);
+		fwrite(transaction, sizeof(transaction_t), 1, file_fifo);
+		//printf("imprime: %s \n", ficheiro);
 	}
-	fclose(f);	
-}
-
-/*
-void* teste2(void* fifo) {
-	int i;
-	char *ficheiro = (char*) fifo;
-	printf("recebe: %s \n", ficheiro);
-	
-	FILE *r = fopen(ficheiro, "rb");
-	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-	for(;;) {
-		sleep(1);
-		fread(transaction, sizeof(transaction_t), 1, r);
-		printf("%s: %s \n",ficheiro, print_transaction(transaction));
-	}
-	fclose(r);
+	fclose(file_fifo);	
 }
 
 
 /**
  *
  */
-//void start(int number_of_orders) {
 void start() {
 	create_pipes();
 
@@ -82,8 +64,7 @@ void start() {
     
     for(i = 0; i < NUM_THREADS; i++) {
 		pthread_join(threads[i], NULL);
-    }
-    
+    }  
     
 }
 

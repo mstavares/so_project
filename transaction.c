@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include "transaction.h"
 
-pthread_mutex_t lock;
 
 /** Este array guarda a lista de empresas existentes na bolsa */
 char *title[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
@@ -40,7 +39,8 @@ transaction_t* create_transaction() {
 	strcpy(transaction->title, random_title());
 	transaction->value = random_value();
 	transaction->amount = random_amount();
-	strcpy(transaction->timestamp, get_timestamp());
+	//strcpy(transaction->timestamp, get_timestamp());
+	transaction->timestamp = get_timestamp();
 	return transaction;
 }
 
@@ -49,11 +49,10 @@ transaction_t* create_transaction() {
  */
 char* print_transaction(transaction_t *transaction) {
 	static char str[50];
-	sprintf(str, "%s %s %f %d %s", transaction->id, transaction->title,
+	sprintf(str, "%s %s %f %d %ld", transaction->id, transaction->title,
 		transaction->value, transaction->amount, transaction->timestamp);
 	return str;
 }
-
 
 /**
  * Esta função escolhe aleatoriamente uma empresa da lista de titulos
@@ -80,9 +79,18 @@ float random_value() {
 }
 
 /**
- * Esta função regista o momento em que a transação foi iniciada.
+ * Esta função devolve um timestamp no formato long
  */
-char* get_timestamp() {
+long get_timestamp() {
 	time_t now = time(NULL);
-	return asctime(localtime (&now));
+	return now;
 }
+
+/**
+ * Esta função devolve um timestamp no formato long
+ */
+char* timestamp_to_string(time_t time) {
+	return asctime(localtime (&time));
+}
+
+
