@@ -13,126 +13,83 @@
 #include <unistd.h>
 #include "transaction.h"
 
-
 #define NUM_THREADS 4
 #define NUM_PIPES 4
 
+pthread_mutex_t lock;
 
-
-
-
-
-void* teste(void* recebe) {
-	//strcat(ficheiro, ".txt");
-	
-	int i;
-	FILE *f = fopen("teste.bin", "ab");
-		
-	for(i = 0; i < 10; i++) {
-		pthread_mutex_lock(&lock);
-		sleep(1);
-		transaction_t *transaction = create_transaction();
-		fwrite(transaction, sizeof(transaction_t), 1, f);;
-		printf("%s \n", print_transaction(transaction));
-		pthread_mutex_unlock(&lock);
+void create_pipes() {
+	int i, ret_val;
+	char fifo[8];
+	for (i = 0; i < NUM_PIPES; i++) {
+		snprintf(fifo, sizeof(fifo), "fifo%d", i);	
+		ret_val = mkfifo(fifo, 0666);
+		if ((ret_val == -1) && (errno != EEXIST)) {
+			perror("Error creating named pipe\n");
+			exit(-1);
+		}
 	}
 	
-	fclose(f);
-	
-	/*
-	printf("%s \n", "LER!!!");
-	
-	FILE *r = fopen("teste.bin", "rb");
-	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-	
-	for(i = 0; i < 10; i++) {
-		fread(transaction, sizeof(transaction_t), 1, r);
-		printf("%s \n", print_transaction(transaction));
-	}
-	
-	fclose(r);
-	*/
-	
-	
-	/*
-	char *ficheiro = (char *) recebe;
-	int i;
-	
-	FILE *f = fopen("teste.txt", "a");
-	for(i = 0; i < 5; i++) {
-		fputs(ficheiro, f);
-		fputs("\n", f);
-	}
-	fclose(f);
-*/
-		
 }
+
+
+void* teste(void* fifo) {
+	int i, fd;
+	char* ficheiro = (char*) fifo;
+	printf("imprime: %s \n", ficheiro);
+	FILE *f = fopen(ficheiro, "wb");
+	for(;;) {
+		transaction_t *transaction = create_transaction();
+		fwrite(transaction, sizeof(transaction_t), 1, f);
+	}
+	fclose(f);	
+}
+
+/*
+void* teste2(void* fifo) {
+	int i;
+	char *ficheiro = (char*) fifo;
+	printf("recebe: %s \n", ficheiro);
+	
+	FILE *r = fopen(ficheiro, "rb");
+	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
+	for(;;) {
+		sleep(1);
+		fread(transaction, sizeof(transaction_t), 1, r);
+		printf("%s: %s \n",ficheiro, print_transaction(transaction));
+	}
+	fclose(r);
+}
+
 
 /**
  *
  */
-void start(int number_of_orders) {
+//void start(int number_of_orders) {
+void start() {
+	create_pipes();
+
 	pthread_t threads[NUM_THREADS];
 	int rc, t;
     int *taskids[NUM_THREADS];
     int i;
-        
+
+    char* fifos[4] = {"fifo0", "fifo1", "fifo2", "fifo3"};
     
-    char* palavras[4] = {"thread1", "thread2", "thread3", "thread4"}; 
+    for(i = 0; i < NUM_THREADS; i++) {
+		pthread_create(&threads[i], NULL, teste, (void *) fifos[i]);
+    }   
     
-    for(i = 0; i < 4; i++) {
-		pthread_create(&threads[i], NULL, teste, (void *) palavras[i]);
-    }
-    
-    for(i = 0; i < 4; i++) {
+    for(i = 0; i < NUM_THREADS; i++) {
 		pthread_join(threads[i], NULL);
     }
     
     
-    
-    
-    
-    /*
-    char* palavras[4] = {"thread1", "thread2", "thread3", "thread4"}; 
-    
-    for(i = 0; i < 4; i++) {
-    	teste(palavras[i]);
-    }
-    */
-    
-    /*
-    char lala[50] = "teste";
-    teste(lala);
-    */
-    
-    
-    /*
-    for(i = 0; i < 4; i++) {
-    	//teste(  );
-		char str[36]; 
-		uuid_t uuid;
-		uuid_clear(uuid);
-		uuid_generate_random(uuid);
-		uuid_unparse(uuid,str);
-		teste("teste");
-    }
-    */
-    
-	/** Cria fifos caso não existam */
-	/*
-	if (access("fifo0", F_OK) == -1) 
-		create_pipes();
-		*/
 }
 
 /**
  * Inicio do programa
  */
 int main(int argc, char* argv[]) {
-	if(argc == 2) {
-		start(atoi(argv[1]));
-	} else {
-		printf("O executavel nao foi invocado devidamente. \n");
-		printf("Deve usar a seguinte sintaxe: ./orders <numero de ordens> \n");
-	}
+	start();
 }

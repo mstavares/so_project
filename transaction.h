@@ -7,7 +7,7 @@ extern char *title[10];
 extern pthread_mutex_t lock;
 
 typedef struct {
-	char id[36];
+	char id[37];
 	char title[6];
 	float value;
 	int amount;

@@ -28,7 +28,6 @@ char* random_id() {
 	uuid_clear(uuid);
 	uuid_generate_random(uuid);
 	uuid_unparse(uuid,str); 
-	str[35] = '\0';
 	return str; 
 }
 
