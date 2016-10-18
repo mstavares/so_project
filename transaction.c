@@ -39,8 +39,8 @@ transaction_t* create_transaction() {
 	strcpy(transaction->title, random_title());
 	transaction->value = random_value();
 	transaction->amount = random_amount();
-	//strcpy(transaction->timestamp, get_timestamp());
-	transaction->timestamp = get_timestamp();
+	//transaction->timestamp = get_timestamp();
+	transaction->timestamp = rand() % 10;
 	return transaction;
 }
 

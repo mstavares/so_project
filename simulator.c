@@ -18,16 +18,14 @@
 #include <signal.h>
 #include "transaction.h"
 
-//#define NUMBER_OF_THREADS 1
+#define NUMBER_OF_THREADS 1
 #define NUMBER_OF_PIPES 4
 
+// porque?
+static transaction_t* waiting_list[NUMBER_OF_PIPES];
+static int ponteiro;
 
-transaction_t* waiting_list[NUMBER_OF_PIPES];
-
-#define NUMBER_OF_THREADS 3
-int array[4];
-
-int compare(int a, int b) {
+int compare(time_t a, time_t b) {
 	if(a < b) {
 		return 1;
 	} else {
@@ -36,7 +34,6 @@ int compare(int a, int b) {
 }
 
 
-/*
 int waiting_algorithm() {
 	int val;
 	if(compare(waiting_list[0]->timestamp, waiting_list[1]->timestamp)) {
@@ -70,42 +67,7 @@ int waiting_algorithm() {
 	}
 	return val;
 }
-*/
 
-
-int waiting_algorithm() {
-	int val;
-	if(compare(array[0], array[1])) {
-		if(compare(array[0], array[2])) {
-			if(compare(array[0], array[3])) {
-				val = 0;
-			} else {
-				val = 3;
-			}
-		} else {
-			if(compare(array[2], array[3])) {
-				val = 2;
-			} else {
-				val = 3;
-			}
-		}
-	} else {
-		if(compare(array[1], array[2])) {
-			if(compare(array[1], array[3])) {
-				val = 1;
-			} else {
-				val = 3;
-			}
-		} else {
-			if(compare(array[2], array[3])) {
-				val = 2;
-			} else {
-				val = 3;
-			}
-		}
-	}
-	return val;
-}
 
 void *readOrders() {
 	int i;
@@ -118,53 +80,42 @@ void *readOrders() {
 		printf("%s \n", fifo);
 	}
 	
-	
-	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-	for(i = 0; ; i++) {
-		if(i == 4) {
-			i = 0;
-		}
-		
-		fread(transaction, sizeof(transaction_t), 1, fifos[i]);
-		//printf("%d: %s \n", i, print_transaction(transaction));
 
+	
+	for(i = 0; i < 4; i++) {
+		sleep(1);
+		waiting_list[i] = (transaction_t *) malloc(sizeof(transaction_t));	
+		fread(waiting_list[i], sizeof(transaction_t), 1, fifos[i]);
+		printf("%d: %s \n",i, print_transaction(waiting_list[i]));		
 	}
 	
-	//fclose(r);
-}
-
-int randomize() {
-	return rand() % 20;
-}
-
-void teste_algoritmo() {
-	int i;
+	printf("--------> CHEIO <--------- \n");
+	
 	for(i = 0; i < 4; i++) {
-		array[i] = randomize();
+		printf("%d: %s \n", i, print_transaction(waiting_list[i]));
 	}
-	printf("MENOR: %d \n", waiting_algorithm());
+	
+	printf("--------> FIM <--------- \n");
+	
+	
+	for(;;) {
+		transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
+		ponteiro = waiting_algorithm();
+		printf("ponteiro: %d \n", ponteiro);
+		printf("%d: %s \n", ponteiro, print_transaction(waiting_list[ponteiro]));
+		fread(transaction, sizeof(transaction_t), 1, fifos[ponteiro]);
+		waiting_list[ponteiro] = transaction;
+		sleep(1);	
+	}
+	
 }
 
-void ultima() {
-	int i;
-	teste_algoritmo();
-	printf("---------------------\n");
-	for(i = 0; i < 4; i++) {
-		printf("%d -> %d \n", i, array[i]);
-	}
-}
 
 int main(int argc, char* argv[]) {
 	int i;
 	pthread_t threads[NUMBER_OF_THREADS];
-	
-	for(i = 0; i < 5; i++) {
-		ultima();
-    }	
-    
-    	
-    	
-    	
+	readOrders();
+
 	/*
 	for(i = 0; i < NUMBER_OF_THREADS; i++) {
 		pthread_create(&threads[i], NULL, readOrders, NULL);
@@ -174,4 +125,5 @@ int main(int argc, char* argv[]) {
 		pthread_join(threads[i], NULL);
     }
     */
+    
 }

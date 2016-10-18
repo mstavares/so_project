@@ -32,16 +32,14 @@ void create_pipes() {
 
 
 void* teste(void* fifo) {
-	int i, fd;
 	char* ficheiro = (char*) fifo;
 	printf("imprime: %s \n", ficheiro);
 	FILE *file_fifo = fopen(ficheiro, "wb");
 	for(;;) {
 		transaction_t *transaction = create_transaction();
 		fwrite(transaction, sizeof(transaction_t), 1, file_fifo);
-		//printf("imprime: %s \n", ficheiro);
 	}
-	fclose(file_fifo);	
+	//fclose(file_fifo);	
 }
 
 
@@ -50,10 +48,7 @@ void* teste(void* fifo) {
  */
 void start() {
 	create_pipes();
-
 	pthread_t threads[NUM_THREADS];
-	int rc, t;
-    int *taskids[NUM_THREADS];
     int i;
 
     char* fifos[4] = {"fifo0", "fifo1", "fifo2", "fifo3"};
