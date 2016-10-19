@@ -18,22 +18,29 @@
 #include <signal.h>
 #include "transaction.h"
 
-#define NUMBER_OF_THREADS 1
 #define NUMBER_OF_PIPES 4
 
-// porque?
+sem_t *semaphores[NUMBER_OF_PIPES];
 static transaction_t* waiting_list[NUMBER_OF_PIPES];
 static int ponteiro;
 
+void teste();
+
+/**
+ * Esta função define que ordem é que passa primeiro.
+ */
+ 
 int compare(time_t a, time_t b) {
-	if(a < b) {
+	if(a <= b) {
 		return 1;
 	} else {
 		return 0;
 	}
 }
 
-
+/**
+ * Este algoritmo devolve a posicao da próxima ordem a sair da lista de espera.
+ */
 int waiting_algorithm() {
 	int val;
 	if(compare(waiting_list[0]->timestamp, waiting_list[1]->timestamp)) {
@@ -68,62 +75,63 @@ int waiting_algorithm() {
 	return val;
 }
 
-
-void *readOrders() {
-	int i;
-	FILE *fifos[4];
-		
-	for (i = 0; i < NUMBER_OF_PIPES; i++) {
+/**
+ * Esta funcao abre os fifos para leitura.
+ */
+void open_fifos(FILE *fifos[]) {
+	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
 		char fifo[8];
 		snprintf(fifo, sizeof(fifo), "fifo%d", i);
 		fifos[i] = fopen(fifo, "rb");
-		printf("%s \n", fifo);
+		printf("A abrir o %s \n", fifo);
 	}
-	
+}
 
+/**
+ * Esta funcao vai carregar a lista de espera com as primeiras ordens de cada pipe
+ */
+void buffering(FILE *fifos[]) {
 	
-	for(i = 0; i < 4; i++) {
+	for(int i = 0; i < NUMBER_OF_PIPES; i++) {
 		sleep(1);
-		waiting_list[i] = (transaction_t *) malloc(sizeof(transaction_t));	
+		waiting_list[i] = (transaction_t *) malloc(sizeof(transaction_t));
 		fread(waiting_list[i], sizeof(transaction_t), 1, fifos[i]);
-		printf("%d: %s \n",i, print_transaction(waiting_list[i]));		
+		//sem_wait(semaphores[i]);
 	}
-	
-	printf("--------> CHEIO <--------- \n");
-	
-	for(i = 0; i < 4; i++) {
-		printf("%d: %s \n", i, print_transaction(waiting_list[i]));
-	}
-	
-	printf("--------> FIM <--------- \n");
-	
-	
+}
+
+/**
+ * Esta funcao vai ler os fifos e encaminhar a ordem a ordem com maior precedencia.
+ */
+void read_orders(FILE *fifos[]) {
 	for(;;) {
-		transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 		ponteiro = waiting_algorithm();
-		printf("ponteiro: %d \n", ponteiro);
+		sleep(1);
 		printf("%d: %s \n", ponteiro, print_transaction(waiting_list[ponteiro]));
-		fread(transaction, sizeof(transaction_t), 1, fifos[ponteiro]);
-		waiting_list[ponteiro] = transaction;
-		sleep(1);	
+		free(waiting_list[ponteiro]);
+		waiting_list[ponteiro] = (transaction_t *) malloc(sizeof(transaction_t));
+		fread(waiting_list[ponteiro], sizeof(transaction_t), 1, fifos[ponteiro]);
+		//sem_wait(semaphores[ponteiro]);
 	}
-	
 }
 
 
-int main(int argc, char* argv[]) {
-	int i;
-	pthread_t threads[NUMBER_OF_THREADS];
-	readOrders();
-
-	/*
-	for(i = 0; i < NUMBER_OF_THREADS; i++) {
-		pthread_create(&threads[i], NULL, readOrders, NULL);
+void create_semaphores() {
+	char semaphore[10];
+	for(int i = 0; i < NUMBER_OF_PIPES; i++) {
+		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);
+		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  
 	}
+}
 
-    for(i = 0; i < NUMBER_OF_THREADS; i++) {
-		pthread_join(threads[i], NULL);
-    }
-    */
-    
+
+/**
+ * Inicio do programa
+ */
+int main(int argc, char* argv[]) {
+	FILE *fifos[NUMBER_OF_PIPES];
+	open_fifos(fifos);
+	create_semaphores();	
+	buffering(fifos);
+	read_orders(fifos);
 }

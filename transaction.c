@@ -17,6 +17,7 @@
 /** Este array guarda a lista de empresas existentes na bolsa */
 char *title[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
 
+
 /**
  * Esta função cria um UUID aleatoriamente
  * Os UUID random têm a forma xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
@@ -39,8 +40,7 @@ transaction_t* create_transaction() {
 	strcpy(transaction->title, random_title());
 	transaction->value = random_value();
 	transaction->amount = random_amount();
-	//transaction->timestamp = get_timestamp();
-	transaction->timestamp = rand() % 10;
+	transaction->timestamp = get_timestamp();
 	return transaction;
 }
 
@@ -49,8 +49,8 @@ transaction_t* create_transaction() {
  */
 char* print_transaction(transaction_t *transaction) {
 	static char str[50];
-	sprintf(str, "%s %s %f %d %ld", transaction->id, transaction->title,
-		transaction->value, transaction->amount, transaction->timestamp);
+	sprintf(str, "%s %s %f %d %s", transaction->id, transaction->title,
+		transaction->value, transaction->amount, timestamp_to_string(transaction->timestamp));
 	return str;
 }
 
@@ -89,8 +89,9 @@ long get_timestamp() {
 /**
  * Esta função devolve um timestamp no formato long
  */
-char* timestamp_to_string(time_t time) {
-	return asctime(localtime (&time));
+char* timestamp_to_string(time_t now) {
+		time_t now2 = time (NULL);
+	return asctime (localtime (&now2));
 }
 
 

@@ -18,10 +18,8 @@ char* random_title();
 int random_amount();
 float random_value();
 
-//char* get_timestamp();
-
 long get_timestamp();
-char* timestamp_to_string(time_t time);
+char* timestamp_to_string(time_t now);
 
 transaction_t* create_transaction();
 char* print_transaction(transaction_t *transaction);
