@@ -17,63 +17,11 @@
 #include <semaphore.h>
 #include <signal.h>
 #include "transaction.h"
+#include "simulator.h"
 
 #define NUMBER_OF_PIPES 4
 
-sem_t *semaphores[NUMBER_OF_PIPES];
-static transaction_t* waiting_list[NUMBER_OF_PIPES];
-static int ponteiro;
-
-void teste();
-
-/**
- * Esta função define que ordem é que passa primeiro.
- */
- 
-int compare(time_t a, time_t b) {
-	if(a <= b) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
-/**
- * Este algoritmo devolve a posicao da próxima ordem a sair da lista de espera.
- */
-int waiting_algorithm() {
-	int val;
-	if(compare(waiting_list[0]->timestamp, waiting_list[1]->timestamp)) {
-		if(compare(waiting_list[0]->timestamp, waiting_list[2]->timestamp)) {
-			if(compare(waiting_list[0]->timestamp, waiting_list[3]->timestamp)) {
-				val = 0;
-			} else {
-				val = 3;
-			}
-		} else {
-			if(compare(waiting_list[2]->timestamp, waiting_list[3]->timestamp)) {
-				val = 2;
-			} else {
-				val = 3;
-			}
-		}
-	} else {
-		if(compare(waiting_list[1]->timestamp, waiting_list[2]->timestamp)) {
-			if(compare(waiting_list[1]->timestamp, waiting_list[3]->timestamp)) {
-				val = 1;
-			} else {
-				val = 3;
-			}
-		} else {
-			if(compare(waiting_list[2]->timestamp, waiting_list[3]->timestamp)) {
-				val = 2;
-			} else {
-				val = 3;
-			}
-		}
-	}
-	return val;
-}
+static int fds[NUMBER_OF_PIPES];
 
 /**
  * Esta funcao abre os fifos para leitura.
@@ -82,22 +30,21 @@ void open_fifos(FILE *fifos[]) {
 	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
 		char fifo[8];
 		snprintf(fifo, sizeof(fifo), "fifo%d", i);
-		fifos[i] = fopen(fifo, "rb");
+		fds[i] = open(fifo, O_RDONLY);
 		printf("A abrir o %s \n", fifo);
 	}
 }
 
 /**
- * Esta funcao vai carregar a lista de espera com as primeiras ordens de cada pipe
+ *
  */
-void buffering(FILE *fifos[]) {
-	
+fd_set create_pool() {
+	fd_set set;
+	FD_ZERO(&set);
 	for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-		sleep(1);
-		waiting_list[i] = (transaction_t *) malloc(sizeof(transaction_t));
-		fread(waiting_list[i], sizeof(transaction_t), 1, fifos[i]);
-		//sem_wait(semaphores[i]);
+		FD_SET(fds[i], &set);
 	}
+	return set;
 }
 
 /**
@@ -105,22 +52,20 @@ void buffering(FILE *fifos[]) {
  */
 void read_orders(FILE *fifos[]) {
 	for(;;) {
-		ponteiro = waiting_algorithm();
 		sleep(1);
-		printf("%d: %s \n", ponteiro, print_transaction(waiting_list[ponteiro]));
-		free(waiting_list[ponteiro]);
-		waiting_list[ponteiro] = (transaction_t *) malloc(sizeof(transaction_t));
-		fread(waiting_list[ponteiro], sizeof(transaction_t), 1, fifos[ponteiro]);
-		//sem_wait(semaphores[ponteiro]);
-	}
-}
-
-
-void create_semaphores() {
-	char semaphore[10];
-	for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);
-		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  
+		fd_set set = create_pool();
+		if(select(FD_SETSIZE, &set, NULL, NULL, NULL) != -1) {
+			for(int i = 0; i < NUMBER_OF_PIPES; i++) {
+				if(FD_ISSET(fds[i], &set)) {
+					transaction_t* transaction = (transaction_t *) malloc(sizeof(transaction_t));
+					read(fds[i], transaction, sizeof(transaction_t));
+					printf("%d: %s \n", fds[i], print_transaction(transaction));
+				}
+			}
+		} else {
+			perror("select = -1");
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
@@ -130,8 +75,6 @@ void create_semaphores() {
  */
 int main(int argc, char* argv[]) {
 	FILE *fifos[NUMBER_OF_PIPES];
-	open_fifos(fifos);
-	create_semaphores();	
-	buffering(fifos);
+	open_fifos(fifos);	
 	read_orders(fifos);
 }

@@ -90,8 +90,7 @@ long get_timestamp() {
  * Esta função devolve um timestamp no formato long
  */
 char* timestamp_to_string(time_t now) {
-		time_t now2 = time (NULL);
-	return asctime (localtime (&now2));
+	return asctime (localtime (&now));
 }
 
 

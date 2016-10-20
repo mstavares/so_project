@@ -12,84 +12,63 @@
 #include <uuid/uuid.h>
 #include <unistd.h>
 #include "transaction.h"
+#include "orders.h"
 
 #define NUM_THREADS 4
 #define NUMBER_OF_PIPES 4
+#define FIFO_PERMISSIONS 0666
 
-sem_t *semaphores[NUMBER_OF_PIPES];
-
-void* generate_orders(void* i);
-
-
-
-void create_semaphores() {
-	char semaphore[10];
-	for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);
-		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  
-	}
-}
-
-
-void create_pipes() {
-	int i, ret_val;
+/**
+ * Esta função cria os fifos para que haja comunicacao com o simulator.c
+ */
+void create_fifos() {
 	char fifo[8];
-	for (i = 0; i < NUMBER_OF_PIPES; i++) {
+	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
 		snprintf(fifo, sizeof(fifo), "fifo%d", i);	
-		ret_val = mkfifo(fifo, 0666);
-		if ((ret_val == -1) && (errno != EEXIST)) {
+		if ((mkfifo(fifo, FIFO_PERMISSIONS) == -1) && (errno != EEXIST)) {
 			perror("Error creating named pipe\n");
-			exit(-1);
+			exit(EXIT_FAILURE);
 		}
 	}
-	
 }
 
+/**
+ * Esta função inicializa as threads que vao gerar ordens
+ * aleatórias para dentro dos fifos
+ */
 void start_threads() {
 	int *taskids[NUM_THREADS];
 	pthread_t threads[NUM_THREADS];
-
+	
     for(int i = 0; i < NUM_THREADS; i++) {
     	taskids[i] = (int *) malloc(sizeof(int));
     	*taskids[i] = i;
 		pthread_create(&threads[i], NULL, generate_orders, (void *) taskids[i]);
     }   
-    
+  
     for(int i = 0; i < NUM_THREADS; i++) {
 		pthread_join(threads[i], NULL);
     }  
 }
 
-
+/**
+ * Esta é a função invocada pelas threads e é a responsável por gerar
+ * as ordens aleatóriamente. Estas ordens são posteriormente inseridas
+ * nos fifos.
+ */
 void* generate_orders(void* i) {
 	char ficheiro[8];
 	int pipe_number = *((int*) i);
 	sprintf(ficheiro, "fifo%d", pipe_number);
-	printf("a gerar ordens random no %s \n", ficheiro);
-	//FILE *file_fifo = fopen(ficheiro, "wb");
-	int wrfd = open(ficheiro, O_WRONLY);
-	
-	int val;
-	
+	printf("A gerar ordens random no %s \n", ficheiro);
+	int fd = open(ficheiro, O_WRONLY);
 	for(;;) {
 		sleep(rand() % 10);
-		
 		transaction_t *transaction = create_transaction();
-		write(wrfd, transaction, sizeof(transaction_t));
+		write(fd, transaction, sizeof(transaction_t));
 		printf("%d -> %s \n", pipe_number, print_transaction(transaction));
 		free(transaction);
-		
-		//sem_getvalue(semaphores[pipe_number], &val);
-		//printf(":%d \n", val);
-	//	sem_wait(semaphores[pipe_number]);
-		//sem_post(semaphores[pipe_number]);
 	}	
-}
-
-void teste() {
-	for(;;) {
-		sem_wait(semaphores[0]);
-	}
 }
 
 
@@ -97,23 +76,6 @@ void teste() {
  * Inicio do programa
  */
 int main(int argc, char* argv[]) {
-	create_pipes();
-	create_semaphores();
-	start_threads();
-	
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+	create_fifos();
+	start_threads();	
 }
