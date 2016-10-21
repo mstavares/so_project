@@ -1,9 +1,10 @@
 #ifndef TRANSACTION_H
 #define TRANSACTION_H
+#define NUMBER_OF_TITLES
+
 #include <time.h>
 
-extern char str[36];
-extern char *title[10];
+extern char *titles[NUMBER_OF_TITLES];
 
 typedef struct {
 	char id[37];

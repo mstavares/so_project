@@ -15,7 +15,7 @@
 
 
 /** Este array guarda a lista de empresas existentes na bolsa */
-char *title[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
+char *titles[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
 
 
 /**
@@ -59,7 +59,7 @@ char* print_transaction(transaction_t *transaction) {
  * O inteiro devolvido estará entre 0 e 9
  */
 char* random_title() {
-	return title[rand() % 10];
+	return titles[rand() % 10];
 }
 
 /**
