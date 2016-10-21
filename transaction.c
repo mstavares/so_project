@@ -44,6 +44,14 @@ transaction_t* create_transaction() {
 	return transaction;
 }
 
+void transaction_clone(transaction_t *destination, transaction_t *source) {
+	strcpy(destination->id, source->id);
+	strcpy(destination->title, source->title);
+	destination->value = source->value;
+	destination->amount = source->amount;
+	destination->timestamp = source->timestamp;
+}
+
 /**
  * Esta funcao imprime todos os detalhes de uma transação
  */
