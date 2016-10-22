@@ -21,9 +21,9 @@ float random_value();
 
 long get_timestamp();
 char* timestamp_to_string(time_t now);
-transaction_t* create_transaction();
+transaction_t* transaction_create();
 void transaction_clone(transaction_t *destination, transaction_t *source);
-char* print_transaction(transaction_t *transaction);
+char* transaction_print(transaction_t *transaction);
 transaction_t * transaction_from_file(FILE *file);
 
 #endif

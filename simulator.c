@@ -55,10 +55,9 @@ void* process_orders(void *received) {
 	transaction_t *array = transactions[position];
 	for(;;) {
 		sem_wait(&processing_semaphores[position]);
-		transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-		transaction = queue_pop(array, ORDERS);
-		printf("!!!! %s \n", print_transaction(transaction));
-		
+		printf("---------------------\n");
+		queue_sort(array, ORDERS);
+		queue_print(array, ORDERS);
 
 	}
 }
@@ -110,7 +109,7 @@ void allocate_orders(transaction_t *transaction) {
 	if(strcmp(transaction->title, titles[0]) == 0) {
 		queue_push(Altri, ORDERS, transaction);
 		sem_post(&processing_semaphores[0]);
-	} else if (strcmp(transaction->title, titles[1]) == 0) {
+	} /*else if (strcmp(transaction->title, titles[1]) == 0) {
 		queue_push(BPI, ORDERS, transaction);
 		sem_post(&processing_semaphores[1]);
 	} else if (strcmp(transaction->title, titles[2]) == 0) {
@@ -138,7 +137,7 @@ void allocate_orders(transaction_t *transaction) {
 		queue_push(REN, ORDERS, transaction);
 		sem_post(&processing_semaphores[9]);
 	}
-	
+	*/
 }
 
 

@@ -47,7 +47,7 @@ transaction_t * transaction_from_file(FILE *file) {
 /**
  * Esta funcao devolve uma transacao gerada aleatoriamente
  */
-transaction_t * create_transaction() {
+transaction_t * transaction_create() {
 	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 	strcpy(transaction->id, random_id());
 	strcpy(transaction->title, random_title());
@@ -68,7 +68,7 @@ void transaction_clone(transaction_t *destination, transaction_t *source) {
 /**
  * Esta funcao imprime todos os detalhes de uma transação
  */
-char* print_transaction(transaction_t *transaction) {
+char* transaction_print(transaction_t *transaction) {
 	static char str[50];
 	sprintf(str, "%s %s %f %d %s", transaction->id, transaction->title,
 		transaction->value, transaction->amount, timestamp_to_string(transaction->timestamp));

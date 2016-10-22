@@ -5,5 +5,6 @@
 void queue_push(transaction_t array[], int array_size, transaction_t *transaction);
 transaction_t * queue_pop(transaction_t array[], int array_size);
 void queue_print(transaction_t array[], int array_size);
+void queue_sort(transaction_t array[], int max);
 
 #endif

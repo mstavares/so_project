@@ -81,7 +81,7 @@ void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
 		transaction_t *transaction = transaction_from_file(file);
 		if(transaction != NULL) {
 			write(open(ficheiro, O_WRONLY), transaction, sizeof(transaction_t));
-			printf("%d -> %s", fifo_number, print_transaction(transaction));
+			printf("%d -> %s", fifo_number, transaction_print(transaction));
 			sem_post(semaphores[fifo_number]);
 		}
 	}
@@ -104,9 +104,9 @@ void* generate_orders(void* i) {
 		printf("A gerar ordens random no %s \n", ficheiro);
 		for(;;) {
 			sleep(rand() % 10);
-			transaction_t *transaction = create_transaction();
+			transaction_t *transaction = transaction_create();
 			write(open(ficheiro, O_WRONLY), transaction, sizeof(transaction_t));
-			printf("%d -> %s", fifo_number, print_transaction(transaction));
+			printf("%d -> %s", fifo_number, transaction_print(transaction));
 			sem_post(semaphores[fifo_number]);
 		}
 	}	
