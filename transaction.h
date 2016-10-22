@@ -8,7 +8,7 @@ extern char *titles[NUMBER_OF_TITLES];
 
 typedef struct {
 	char id[37];
-	char title[6];
+	char title[10];
 	float value;
 	int amount;
 	time_t timestamp;
@@ -24,5 +24,6 @@ char* timestamp_to_string(time_t now);
 transaction_t* create_transaction();
 void transaction_clone(transaction_t *destination, transaction_t *source);
 char* print_transaction(transaction_t *transaction);
+transaction_t * transaction_from_file(FILE *file);
 
 #endif

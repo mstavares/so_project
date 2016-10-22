@@ -15,8 +15,21 @@
 
 #define NUMBER_OF_PIPES 4
 #define FIFO_PERMISSIONS 0666
+#define FILE_NAME "orders.txt"
 
 static sem_t *semaphores[NUMBER_OF_PIPES];
+
+
+FILE * is_file_exists() {
+	return fopen(FILE_NAME, "r");
+}
+
+void read_file(FILE *file) {
+	int c;
+	while ((c = getc(file)) != EOF)
+    	putchar(c);
+	fclose(file);
+}
 
 void create_semaphores() {		
  	char semaphore[10];		
@@ -45,18 +58,34 @@ void create_fifos() {
  * aleatórias para dentro dos fifos
  */
 void start_threads() {
-	int *taskids[NUMBER_OF_PIPES];
-	pthread_t threads[NUMBER_OF_PIPES];
+	int *taskids[1];
+	pthread_t threads[1];
 	
-    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
+    for(int i = 0; i < 1; i++) {
     	taskids[i] = (int *) malloc(sizeof(int));
     	*taskids[i] = i;
 		pthread_create(&threads[i], NULL, generate_orders, (void *) taskids[i]);
     }   
   
-    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
+    for(int i = 0; i < 1; i++) {
 		pthread_join(threads[i], NULL);
     }  
+}
+
+/**
+ * Esta funcao le as ordens do ficheiro FILE_NAME e envia as pelo fifo0
+ */
+void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
+	printf("A ler ordens do ficheiro orders.txt \n");
+	while(!feof(file)) {
+		transaction_t *transaction = transaction_from_file(file);
+		if(transaction != NULL) {
+			write(open(ficheiro, O_WRONLY), transaction, sizeof(transaction_t));
+			printf("%d -> %s", fifo_number, print_transaction(transaction));
+			sem_post(semaphores[fifo_number]);
+		}
+	}
+	printf("A leitura do ficheiro orders.txt foi terminada \n");
 }
 
 /**
@@ -65,31 +94,21 @@ void start_threads() {
  * nos fifos.
  */
 void* generate_orders(void* i) {
+	FILE *file;
+	int fifo_number = *((int*) i);
 	char ficheiro[8];
-	int pipe_number = *((int*) i);
-	sprintf(ficheiro, "fifo%d", pipe_number);
-	printf("A gerar ordens random no %s \n", ficheiro);
-	int fd = open(ficheiro, O_WRONLY);
-	for(;;) {
-		sleep(rand() % 10);
-		transaction_t *transaction = create_transaction();
-		write(fd, transaction, sizeof(transaction_t));
-		printf("%d -> %s \n", pipe_number, print_transaction(transaction));
-		free(transaction);
-		sem_post(semaphores[pipe_number]);
-		
-		/*
-		printf("antes pipe: %d \n", pipe_number);
-		int val;
-		sem_getvalue(semaphores[pipe_number], &val);
-		printf("valor: %d \n", val);
-		
-		sem_post(semaphores[pipe_number]);
-		
-		printf("depois pipe: %d \n", pipe_number);;
-		sem_getvalue(semaphores[pipe_number], &val);
-		printf("valor: %d \n", val);
-		*/
+	sprintf(ficheiro, "fifo%d", fifo_number);
+	if(fifo_number == 0 && (file = is_file_exists())) {
+		read_orders_from_file(file, ficheiro, fifo_number);
+	} else {
+		printf("A gerar ordens random no %s \n", ficheiro);
+		for(;;) {
+			sleep(rand() % 10);
+			transaction_t *transaction = create_transaction();
+			write(open(ficheiro, O_WRONLY), transaction, sizeof(transaction_t));
+			printf("%d -> %s", fifo_number, print_transaction(transaction));
+			sem_post(semaphores[fifo_number]);
+		}
 	}	
 }
 
