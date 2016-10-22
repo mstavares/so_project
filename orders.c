@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <semaphore.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <string.h>
@@ -12,9 +13,18 @@
 #include "transaction.h"
 #include "orders.h"
 
-#define NUM_THREADS 4
 #define NUMBER_OF_PIPES 4
 #define FIFO_PERMISSIONS 0666
+
+static sem_t *semaphores[NUMBER_OF_PIPES];
+
+void create_semaphores() {		
+ 	char semaphore[10];		
+ 	for(int i = 0; i < NUMBER_OF_PIPES; i++) {		
+ 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);		
+ 		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  		
+ 	}		
+}
 
 /**
  * Esta função cria os fifos para que haja comunicacao com o simulator.c
@@ -35,16 +45,16 @@ void create_fifos() {
  * aleatórias para dentro dos fifos
  */
 void start_threads() {
-	int *taskids[NUM_THREADS];
-	pthread_t threads[NUM_THREADS];
+	int *taskids[NUMBER_OF_PIPES];
+	pthread_t threads[NUMBER_OF_PIPES];
 	
-    for(int i = 0; i < NUM_THREADS; i++) {
+    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
     	taskids[i] = (int *) malloc(sizeof(int));
     	*taskids[i] = i;
 		pthread_create(&threads[i], NULL, generate_orders, (void *) taskids[i]);
     }   
   
-    for(int i = 0; i < NUM_THREADS; i++) {
+    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
 		pthread_join(threads[i], NULL);
     }  
 }
@@ -66,14 +76,32 @@ void* generate_orders(void* i) {
 		write(fd, transaction, sizeof(transaction_t));
 		printf("%d -> %s \n", pipe_number, print_transaction(transaction));
 		free(transaction);
+		sem_post(semaphores[pipe_number]);
+		
+		/*
+		printf("antes pipe: %d \n", pipe_number);
+		int val;
+		sem_getvalue(semaphores[pipe_number], &val);
+		printf("valor: %d \n", val);
+		
+		sem_post(semaphores[pipe_number]);
+		
+		printf("depois pipe: %d \n", pipe_number);;
+		sem_getvalue(semaphores[pipe_number], &val);
+		printf("valor: %d \n", val);
+		*/
 	}	
 }
 
+void setup() {
+	create_fifos();
+	create_semaphores();
+}
 
 /**
  * Inicio do programa
  */
 int main(int argc, char* argv[]) {
-	create_fifos();
+	setup();
 	start_threads();	
 }
