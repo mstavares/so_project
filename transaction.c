@@ -34,8 +34,9 @@ char* random_id() {
 
 transaction_t * transaction_from_file(FILE *file) {
 	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-	int bytes = fscanf(file, "%s %s %f %d", transaction->id, transaction->title, &transaction->value,
+	int bytes = fscanf(file, "%s %f %d", transaction->title, &transaction->value,
 			&transaction->amount);
+	strcpy(transaction->id, random_id());
 	transaction->timestamp = get_timestamp();
 	if(bytes < 0) {
 		transaction = NULL;

@@ -58,16 +58,16 @@ void create_fifos() {
  * aleatórias para dentro dos fifos
  */
 void start_threads() {
-	int *taskids[1];
-	pthread_t threads[1];
+	int *taskids[NUMBER_OF_PIPES];
+	pthread_t threads[NUMBER_OF_PIPES];
 	
-    for(int i = 0; i < 1; i++) {
+    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
     	taskids[i] = (int *) malloc(sizeof(int));
     	*taskids[i] = i;
 		pthread_create(&threads[i], NULL, generate_orders, (void *) taskids[i]);
     }   
   
-    for(int i = 0; i < 1; i++) {
+    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
 		pthread_join(threads[i], NULL);
     }  
 }
