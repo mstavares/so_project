@@ -49,52 +49,47 @@ static sem_t *semaphores[NUMBER_OF_PIPES];
 
 sem_t sem;
 
+pthread_mutex_t lock;
+
+void write_file(int amount, char* title, float value) {
+	pthread_mutex_lock(&lock);
+	FILE * file = fopen("simulador.log", "a");
+	fprintf(file, "Transacionadas %d ações de %s por %.2f\n", amount, title, value);
+	fclose(file);
+	pthread_mutex_unlock(&lock);
+}
 
 void* process_orders(void *received) {
 	int position =  *((int *) received);
 	transaction_t *array = transactions[position];
 	for(;;) {
 		sem_wait(&processing_semaphores[position]);
-		printf("---------------------\n");
 		queue_sort(array, ORDERS);
-		queue_print(array, ORDERS);
-		printf("**********************\n");
 		for(int i = 0; i < ORDERS; i++) {
-			if((array + i)->value > 0) {
-				/** Vai comprar ações */
-				for(int j = 0; j < ORDERS; j++) {
-					if((array + j)->value < 0 && (array + i)->value >= fabs((array + j)->value)) {
-						if((array + i)->amount > (array + j)->amount) {
-							/** Comprou as acções todas */
-							printf("1: Transacionadas %d ações de %s por %.2f\n", (array + j)->amount, 
-								(array + j)->title ,fabsf((array + j)->value));
-								
-							printf("%s -> %s \n", (array + j)->id, (array + i)->id);
-
-							(array + i)->amount -= (array + j)->amount;
-							(array + j)->amount = 0;							
-							memset(array + j, 0, sizeof(transaction_t));
-						} else {
-							/** As ações nao foram totalmente compradas */
-							printf("2: Transacionadas %d ações de %s por %.2f\n", (array + i)->amount, 
-								(array + i)->title ,fabsf((array + i)->value));
-								
-							printf("%s -> %s \n", (array + j)->id, (array + i)->id);
-							
-							(array + j)->amount -= (array + i)->amount;
-							(array + i)->amount = 0;
-							memset(array + i, 0, sizeof(transaction_t));
-						}	
-					}
+			for(int j = 0; j < ORDERS; j++) {
+				if((array + j)->value < 0 && (array + i)->value >= fabs((array + j)->value)) {
+					if((array + i)->amount > (array + j)->amount) {
+						/** Todas as acções foram transacionadas */
+						printf("1: Transacionadas %d ações de %s por %.2f\n", (array + j)->amount, 
+							(array + j)->title ,fabsf((array + j)->value));						
+						write_file((array + j)->amount, (array + j)->title, fabs((array + j)->value));	
+						(array + i)->amount -= (array + j)->amount;
+						(array + j)->amount = 0;							
+						memset(array + j, 0, sizeof(transaction_t));
+					} else {
+						/** As ações nao foram totalmente transacionadas */
+						printf("2: Transacionadas %d ações de %s por %.2f\n", (array + i)->amount, 
+							(array + i)->title ,fabsf((array + i)->value));				
+						write_file((array + i)->amount, (array + i)->title, fabs((array + i)->value));							
+						(array + j)->amount -= (array + i)->amount;
+						(array + i)->amount = 0;
+						memset(array + i, 0, sizeof(transaction_t));
+					}	
 				}
 			}
 		}
 	}
 }
-
-
-
-
 
 
 void create_semaphores() {		
@@ -139,7 +134,7 @@ void allocate_orders(transaction_t *transaction) {
 	if(strcmp(transaction->title, titles[0]) == 0) {
 		queue_push(Altri, ORDERS, transaction);
 		sem_post(&processing_semaphores[0]);
-	} /*else if (strcmp(transaction->title, titles[1]) == 0) {
+	} else if (strcmp(transaction->title, titles[1]) == 0) {
 		queue_push(BPI, ORDERS, transaction);
 		sem_post(&processing_semaphores[1]);
 	} else if (strcmp(transaction->title, titles[2]) == 0) {
@@ -167,7 +162,6 @@ void allocate_orders(transaction_t *transaction) {
 		queue_push(REN, ORDERS, transaction);
 		sem_post(&processing_semaphores[9]);
 	}
-	*/
 }
 
 
