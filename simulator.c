@@ -58,7 +58,37 @@ void* process_orders(void *received) {
 		printf("---------------------\n");
 		queue_sort(array, ORDERS);
 		queue_print(array, ORDERS);
+		printf("**********************\n");
+		for(int i = 0; i < ORDERS; i++) {
+			if((array + i)->value > 0) {
+				/** Vai comprar ações */
+				for(int j = 0; j < ORDERS; j++) {
+					if((array + j)->value < 0 && (array + i)->value >= fabs((array + j)->value)) {
+						if((array + i)->amount > (array + j)->amount) {
+							/** Comprou as acções todas */
+							printf("1: Transacionadas %d ações de %s por %.2f\n", (array + j)->amount, 
+								(array + j)->title ,fabsf((array + j)->value));
+								
+							printf("%s -> %s \n", (array + j)->id, (array + i)->id);
 
+							(array + i)->amount -= (array + j)->amount;
+							(array + j)->amount = 0;							
+							memset(array + j, 0, sizeof(transaction_t));
+						} else {
+							/** As ações nao foram totalmente compradas */
+							printf("2: Transacionadas %d ações de %s por %.2f\n", (array + i)->amount, 
+								(array + i)->title ,fabsf((array + i)->value));
+								
+							printf("%s -> %s \n", (array + j)->id, (array + i)->id);
+							
+							(array + j)->amount -= (array + i)->amount;
+							(array + i)->amount = 0;
+							memset(array + i, 0, sizeof(transaction_t));
+						}	
+					}
+				}
+			}
+		}
 	}
 }
 

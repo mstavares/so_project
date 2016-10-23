@@ -70,7 +70,7 @@ void transaction_clone(transaction_t *destination, transaction_t *source) {
  */
 char* transaction_print(transaction_t *transaction) {
 	static char str[50];
-	sprintf(str, "%s %s %f %d %s", transaction->id, transaction->title,
+	sprintf(str, "%s %s %.2f %d %s", transaction->id, transaction->title,
 		transaction->value, transaction->amount, timestamp_to_string(transaction->timestamp));
 	return str;
 }
@@ -85,10 +85,10 @@ char* random_title() {
 
 /**
  * Esta função escolhe aleatoriamente a quantidade de acoes a ser transacionada
- * O inteiro devolvido estará entre 0 e 99
+ * O inteiro devolvido estará entre 1 e 100
  */
 int random_amount() {
-	return rand() % 100;
+	return (rand() % 100) + 1;
 }
 
 /**
