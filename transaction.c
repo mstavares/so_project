@@ -1,3 +1,12 @@
+/**********************************************************************
+ * FICHEIRO: transaction.c
+ * DESCRICAO:
+ *   Este ficheiro representa as transacoes e tem as funcoes que lhe
+ *	 sao respetivas
+ *
+ * AUTOR: Miguel Tavares - 21304351
+***********************************************************************/
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -15,7 +24,7 @@
 
 
 /** Este array guarda a lista de empresas existentes na bolsa */
-char *titles[10] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
+char *titles[NUMBER_OF_TITLES] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
 
 
 /**
@@ -31,7 +40,9 @@ char* random_id() {
 	return str; 
 }
 
-
+/**
+ * Esta funcao permite ler transacoes atraves de um ficheiro
+ */
 transaction_t * transaction_from_file(FILE *file) {
 	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 	int bytes = fscanf(file, "%s %f %d", transaction->title, &transaction->value,
@@ -57,6 +68,9 @@ transaction_t * transaction_create() {
 	return transaction;
 }
 
+/**
+ * Esta funcao permite clonar transacoes
+ */
 void transaction_clone(transaction_t *destination, transaction_t *source) {
 	strcpy(destination->id, source->id);
 	strcpy(destination->title, source->title);
@@ -93,7 +107,7 @@ int random_amount() {
 
 /**
  * Esta função escolhe aleatoriamente o preço das ações
- * O float devolvido estará entre 
+ * O float devolvido estará entre 1 e 20
  */
 float random_value() {
 	return (float) (rand() % 20 - 10);

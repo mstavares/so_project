@@ -1,3 +1,13 @@
+/**********************************************************************
+ * FICHEIRO: orders.c
+ * DESCRICAO:
+ *   Este programa cria ordens aleatorias, le ordens atraves de ficheiros
+ *   e atraves do teclado.
+ *   Estas ordens sao escritas em cinco pipes
+ *
+ * AUTOR: Miguel Tavares - 21304351
+***********************************************************************/
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -15,43 +25,19 @@
 
 #define NUMBER_OF_PIPES 4
 #define FIFO_PERMISSIONS 0666
-#define FILE_NAME "orders.txt"
+#define FILE_NAME_TO_READ "orders.txt"
 
+/** Este array de semaforos e necessario para a comunicacao com o simulator.c */
 static sem_t *semaphores[NUMBER_OF_PIPES];
 
-
-FILE * is_file_exists() {
-	return fopen(FILE_NAME, "r");
-}
-
-void read_file(FILE *file) {
-	int c;
-	while ((c = getc(file)) != EOF)
-    	putchar(c);
-	fclose(file);
-}
-
-void create_semaphores() {		
- 	char semaphore[10];		
- 	for(int i = 0; i < NUMBER_OF_PIPES; i++) {		
- 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);		
- 		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  		
- 	}		
-}
-
 /**
- * Esta função cria os fifos para que haja comunicacao com o simulator.c
+ * Esta funcao verifica se um determinado ficheiro existe
+ * se sim, retorna um hander para o mesmo.
  */
-void create_fifos() {
-	char fifo[8];
-	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
-		snprintf(fifo, sizeof(fifo), "fifo%d", i);	
-		if ((mkfifo(fifo, FIFO_PERMISSIONS) == -1) && (errno != EEXIST)) {
-			perror("Error creating named pipe\n");
-			exit(EXIT_FAILURE);
-		}
-	}
+FILE * is_file_exists(char* file_name) {
+	return fopen(file_name, "r");
 }
+
 
 /**
  * Esta função inicializa as threads que vao gerar ordens
@@ -72,8 +58,9 @@ void start_threads() {
     }  
 }
 
+
 /**
- * Esta funcao le as ordens do ficheiro FILE_NAME e envia as pelo fifo0
+ * Esta funcao le as ordens do ficheiro FILE_NAME_TO_READ e envia as pelo fifo0
  */
 void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
 	printf("A ler ordens do ficheiro orders.txt \n");
@@ -88,17 +75,18 @@ void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
 	printf("A leitura do ficheiro orders.txt foi terminada \n");
 }
 
+
 /**
  * Esta é a função invocada pelas threads e é a responsável por gerar
  * as ordens aleatóriamente. Estas ordens são posteriormente inseridas
  * nos fifos.
  */
-void* generate_orders(void* i) {
+void * generate_orders(void* i) {
 	FILE *file;
 	int fifo_number = *((int*) i);
 	char ficheiro[8];
 	sprintf(ficheiro, "fifo%d", fifo_number);
-	if(fifo_number == 0 && (file = is_file_exists())) {
+	if(fifo_number == 0 && (file = is_file_exists(FILE_NAME_TO_READ))) {
 		read_orders_from_file(file, ficheiro, fifo_number);
 	} else {
 		printf("A gerar ordens random no %s \n", ficheiro);
@@ -112,10 +100,43 @@ void* generate_orders(void* i) {
 	}	
 }
 
+
+/**
+ * Esta funcao cria os semaforos utilizados na comunicacao com
+ * o simulator.c
+ */
+void create_semaphores() {		
+ 	char semaphore[10];		
+ 	for(int i = 0; i < NUMBER_OF_PIPES; i++) {		
+ 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);		
+ 		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  		
+ 	}		
+}
+
+
+/**
+ * Esta função cria os fifos para que haja comunicacao com o simulator.c
+ */
+void create_fifos() {
+	char fifo[8];
+	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
+		snprintf(fifo, sizeof(fifo), "fifo%d", i);	
+		if ((mkfifo(fifo, FIFO_PERMISSIONS) == -1) && (errno != EEXIST)) {
+			perror("Error creating named pipe\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+
+/**
+ * Esta faz a inicializacao do orders.c
+ */
 void setup() {
 	create_fifos();
 	create_semaphores();
 }
+
 
 /**
  * Inicio do programa

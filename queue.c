@@ -1,3 +1,15 @@
+/**********************************************************************
+ * FICHEIRO: queue.c
+ * DESCRICAO:
+ *   Este ficheiro contem cria uma fila. Nesta fila do tipo fifo. E possivel:
+ *   1: Adicionar registos
+ *   2: Retirar registos
+ *   3: Ordenar
+ *   4: Listar
+ *
+ * AUTOR: Miguel Tavares - 21304351
+***********************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +20,9 @@
 #define FALSE 0
 #define TRUE 1
 
+/**
+ * Esta funcao adiciona um registo a fila
+ */
 void queue_push(transaction_t array[], int array_size, transaction_t *transaction) {
 	for(int i = 0; i < array_size; i++) {
 		if (array[i].value == 0) {
@@ -18,6 +33,9 @@ void queue_push(transaction_t array[], int array_size, transaction_t *transactio
 }
 
 
+/**
+ * Esta funcao remove um registo da fila
+ */
 transaction_t * queue_pop(transaction_t array[], int array_size) {
 	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 	transaction_clone(transaction, array);
@@ -32,7 +50,9 @@ transaction_t * queue_pop(transaction_t array[], int array_size) {
 	return transaction;
 }
 
-
+/**
+ * Esta funcao imprime a lista
+ */
 void queue_print(transaction_t array[], int array_size) {
 	for(int i = 0; i < array_size; i++) {
 		if (array[i].value == 0) {
@@ -43,6 +63,9 @@ void queue_print(transaction_t array[], int array_size) {
 	}
 }
 
+/**
+ * Esta funcao ordena a lista com recurso ao bubble sort
+ */
 void queue_sort(transaction_t array[], int max) {
 	transaction_t temp;
 	int swapped = FALSE;
