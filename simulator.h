@@ -11,7 +11,7 @@
 #define SIMULATOR_H
 
 /** Numero de ordens que podem ser processadas no repositorio */
-#define ORDERS 10000
+#define ORDERS 100000
 
 /** Nome do semaforo da memoria partilhada */
 #define SHARED_MEMORY_SEMAPHORE "shared_memory_semafore"

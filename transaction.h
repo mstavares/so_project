@@ -75,6 +75,12 @@ transaction_t * transaction_create();
 
 
 /**
+ * Esta funcao devolve uma transacao tendo como base o input do utilizador
+ */
+transaction_t * transaction_manual_create();
+
+
+/**
  * Esta funcao permite ler transacoes atraves de um ficheiro
  */
 transaction_t * transaction_from_file(FILE *file);
@@ -86,17 +92,9 @@ transaction_t * transaction_from_file(FILE *file);
  */
 char* random_id();
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Esta funcao converte os caracteres das strings para maiusculas
+ */
+void string_to_upper_case(char *string);
 
 #endif

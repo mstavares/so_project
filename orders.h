@@ -10,6 +10,9 @@
 #ifndef ORDERS_H
 #define ORDERS_H
 
+
+#define NUMBER_OF_PIPES 5
+
 /**
  * Esta faz a inicializacao do orders.c
  */
@@ -30,24 +33,32 @@ void create_semaphores();
 
 
 /**
- * Esta é a função invocada pelas threads e é a responsável por gerar
- * as ordens aleatóriamente. Estas ordens são posteriormente inseridas
- * nos fifos.
+ * Esta função inicializa as threads que vao gerar ordens
+ * aleatórias para dentro dos fifos
  */
-void * generate_orders(void* i);
+void start_threads();
+
+
+/**
+ * Esta funcao vai verificar se:
+ * 1: Temos ordens para ler a partir de ficheiros
+ * 2: Não temos ficheiros vai gerar ordens aleatorias
+ * 3: Temos de criar a thread para o utilizador criar ordens
+ */
+void * thread_dispatcher(void* i);
+
+
+/**
+ * Esta funcao escreve as ordens num determinado fifo e aciona o semaforo
+ * respeitante ao fifo em questão
+ */
+void write_orders(int fd, sem_t *sem, transaction_t * (*fp_transaction)());
 
 
 /**
  * Esta funcao le as ordens do ficheiro FILE_NAME_TO_READ e envia as pelo fifo0
  */
 void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number);
-
-
-/**
- * Esta função inicializa as threads que vao gerar ordens
- * aleatórias para dentro dos fifos
- */
-void start_threads();
 
 
 /**

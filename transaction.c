@@ -40,6 +40,7 @@ char* random_id() {
 	return str; 
 }
 
+
 /**
  * Esta funcao permite ler transacoes atraves de um ficheiro
  */
@@ -55,6 +56,7 @@ transaction_t * transaction_from_file(FILE *file) {
 	return transaction;
 }
 
+
 /**
  * Esta funcao devolve uma transacao gerada aleatoriamente
  */
@@ -68,6 +70,26 @@ transaction_t * transaction_create() {
 	return transaction;
 }
 
+
+/**
+ * Esta funcao devolve uma transacao tendo como base o input do utilizador
+ */
+transaction_t * transaction_manual_create() {
+	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
+	char title[10];
+	strcpy(transaction->id, random_id());
+	printf("Introduza o nome de uma empresa cotada em bolsa: \n");
+	string_to_upper_case(title);
+	strcpy(transaction->title, title);
+	printf("Introduza o numero de acoes: \n");
+	scanf("%d", &transaction->amount);
+	printf("Introduza o valor da transacao: \n");
+	scanf("%f", &transaction->value);
+	transaction->timestamp = get_timestamp();
+	return transaction;
+}
+
+
 /**
  * Esta funcao permite clonar transacoes
  */
@@ -79,6 +101,7 @@ void transaction_clone(transaction_t *destination, transaction_t *source) {
 	destination->timestamp = source->timestamp;
 }
 
+
 /**
  * Esta funcao imprime todos os detalhes de uma transação
  */
@@ -89,6 +112,7 @@ char* transaction_print(transaction_t *transaction) {
 	return str;
 }
 
+
 /**
  * Esta função escolhe aleatoriamente uma empresa da lista de titulos
  * O inteiro devolvido estará entre 0 e 9
@@ -96,6 +120,7 @@ char* transaction_print(transaction_t *transaction) {
 char* random_title() {
 	return titles[rand() % 10];
 }
+
 
 /**
  * Esta função escolhe aleatoriamente a quantidade de acoes a ser transacionada
@@ -105,6 +130,7 @@ int random_amount() {
 	return (rand() % 100) + 1;
 }
 
+
 /**
  * Esta função escolhe aleatoriamente o preço das ações
  * O float devolvido estará entre 1 e 20
@@ -112,6 +138,7 @@ int random_amount() {
 float random_value() {
 	return (float) (rand() % 20 - 10);
 }
+
 
 /**
  * Esta função devolve um timestamp no formato long
@@ -121,11 +148,22 @@ long get_timestamp() {
 	return now;
 }
 
+
 /**
  * Esta função devolve um timestamp no formato long
  */
 char* timestamp_to_string(time_t now) {
 	return asctime (localtime (&now));
+}
+
+
+/**
+ * Esta funcao converte os caracteres das strings para maiusculas
+ */
+void string_to_upper_case(char *string) {
+	for(; *string != '\0'; string++) {
+		*string = toupper(*string);
+	}
 }
 
 

@@ -29,12 +29,12 @@
 #include <sys/mman.h>
 #include "transaction.h"
 #include "simulator.h"
+#include "orders.h"
 #include "queue.h"
 
 #define PERMISSIONS 0666
 #define NUMBER_OF_PROCESSING_THREADS 10
 #define MAIN_THREADS_TO_START 3
-#define NUMBER_OF_PIPES 4
 #define INIT_THREADS 12
 
 /** Estes arrays são os repositorios das ordens */
@@ -76,8 +76,11 @@ pthread_mutex_t lock;
 transaction_t *shared_memory;
 
 /** Tamanho da memoria partilhada */
-int size_of_shared_memory = sizeof(transaction_t) * ORDERS;
+long size_of_shared_memory = sizeof(transaction_t) * ORDERS;
 
+int contador = 0;
+int file_contador = 0;
+int ficheiros = 0;
 
 /**
  * Funcao que escreve no ficheiro de logs
@@ -89,6 +92,7 @@ void write_file(int amount, char* title, float value) {
 	fclose(file);
 	pthread_mutex_unlock(&lock);
 }
+
 
 /**
  * Thread que processa os repositorios e escreve no ficheiro de logs
@@ -192,75 +196,36 @@ void allocate_orders(transaction_t *transaction) {
 void* dispatcher_thread() {
 	for(;;) {
 		sem_wait(&fifos_sem);
+		transaction_t *transaction = queue_pop(queue, ORDERS);
+		printf("%s", transaction_print(transaction));
 		allocate_orders(queue_pop(queue, ORDERS));
 	}
-}
-
-/**
- * Inicializa a dispatcher thread
- */
-void* start_dispatcher_thread() {
-	pthread_t thread;
-	pthread_create(&thread, NULL, dispatcher_thread, NULL);   
-	pthread_join(thread, NULL);
 }
 
 
 /**
  * Esta funcao vai ler os fifos e encaminhar a ordem a ordem com maior precedencia.
  */
-void* read_orders(void* i) {
+void * read_orders(void* i) {
 	char ficheiro[8];
 	int pipe_number = *((int *) i);
 	sprintf(ficheiro, "fifo%d", pipe_number);
 	printf("A ler ordens do %s \n", ficheiro);
 	int fd = open(ficheiro, O_RDONLY);		
+	
+	int val = 0;
+	
 	for(;;) {
 		sleep(1);
+		sem_getvalue(semaphores[pipe_number], &val);
+		printf("\nantes do wait %d\n", val);
 		sem_wait(semaphores[pipe_number]);
 		transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 		read(fd, transaction, sizeof(transaction_t));
-		queue_push(queue, ORDERS, transaction);
-		sem_post(&fifos_sem);
+		printf("%s", transaction_print(transaction));
+		//queue_push(queue, ORDERS, transaction);
+		//sem_post(&fifos_sem);
 	}	
-}
-
-
-/**
- * Esta função inicializa as threads que vao ler as ordens
- * contidas nos fifos
- */
-void* start_reading_threads() {
-	int *taskids[NUMBER_OF_PIPES];
-	pthread_t threads[NUMBER_OF_PIPES];
-	
-    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-    	taskids[i] = (int *) malloc(sizeof(int));
-    	*taskids[i] = i;
-		pthread_create(&threads[i], NULL, read_orders, (void *) taskids[i]);
-    }  
-  
-    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-		pthread_join(threads[i], NULL);
-    }  
-}
-
-/**
- * Inicializa as 10 threads que vão processar os repositórios de ordens
- */
-void* start_processing_threads() {
-	int *taskids[NUMBER_OF_PROCESSING_THREADS];
-	pthread_t threads[NUMBER_OF_PROCESSING_THREADS];
-	
-    for(int i = 0; i < NUMBER_OF_PROCESSING_THREADS; i++) {
-    	taskids[i] = (int *) malloc(sizeof(int));
-    	*taskids[i] = i;
-		pthread_create(&threads[i], NULL, process_orders, (void *) taskids[i]);
-    }  
-  
-    for(int i = 0; i < NUMBER_OF_PROCESSING_THREADS; i++) {
-		pthread_join(threads[i], NULL);
-    } 
 }
 
 
@@ -268,14 +233,31 @@ void* start_processing_threads() {
  * Inicializa as threads que vão dar inicio ao programa
  */
 void start() {
-	pthread_t threads[MAIN_THREADS_TO_START];
-    pthread_create(&threads[0], NULL, start_reading_threads, NULL);
-    pthread_create(&threads[1], NULL, start_dispatcher_thread, NULL);
-    pthread_create(&threads[2], NULL, start_processing_threads, NULL);
-   
-    for(int i = 0; i < MAIN_THREADS_TO_START; i++) {
+	int number_of_threads = 15;
+	int *taskids[10];
+	int j = 0;
+	pthread_t threads[number_of_threads];
+	
+	
+    for(int i = 0; i < NUMBER_OF_PROCESSING_THREADS; i++, j++) {
+		taskids[i] = (int *) malloc(sizeof(int));
+		*taskids[i] = i;
+		pthread_create(&threads[j], NULL, process_orders, (void *) taskids[i]);
+	}
+	
+	pthread_create(&threads[++j], NULL, dispatcher_thread, NULL);
+    
+    for(int i = 0; i < NUMBER_OF_PIPES; i++, j++) {
+    	taskids[i] = (int *) malloc(sizeof(int));
+    	*taskids[i] = i;
+		pthread_create(&threads[j], NULL, read_orders, (void *) taskids[i]);
+    } 
+	
+	
+    for(int i = 0; i < number_of_threads; i++) {
 		pthread_join(threads[i], NULL);
-    }    
+    } 
+	
 }
 
 
@@ -292,7 +274,6 @@ void create_sm_semaphore() {
  */
 void init_shared_memory() {
 	int shared_memory_id = shmget(SHARED_MEMORY_KEY, size_of_shared_memory, IPC_CREAT | PERMISSIONS);
-	//shared_memory = (transaction_t *) malloc(sizeof(transaction_t) * ORDERS);
 	
 	if(shared_memory_id < 0) {
 		perror("shmget");
@@ -308,7 +289,7 @@ void init_shared_memory() {
 void create_semaphores() {		
  	char semaphore[10];		
  	for(int i = 0; i < NUMBER_OF_PIPES; i++) {		
- 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);		
+ 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);
  		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  		
  	}		
 }
@@ -326,22 +307,10 @@ void init_semaphores() {
 
 
 /**
- * Esta funcao abre os fifos para leitura.
- */
-void open_fifos(FILE *fifos[]) {
-	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
-		char fifo[8];
-		snprintf(fifo, sizeof(fifo), "fifo%d", i);
-	}
-}
-
-
-/**
  * Inicializador do simulador
  */
 void setup() {
 	FILE *fifos[NUMBER_OF_PIPES];
-	open_fifos(fifos);
 	init_semaphores();
 	create_semaphores();
 	init_shared_memory();

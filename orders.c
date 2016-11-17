@@ -23,12 +23,19 @@
 #include "transaction.h"
 #include "orders.h"
 
-#define NUMBER_OF_PIPES 4
+//#define NUMBER_OF_PIPES 5
+#define STDIN_THREAD NUMBER_OF_PIPES - 1
 #define FIFO_PERMISSIONS 0666
-#define FILE_NAME_TO_READ "orders.txt"
 
 /** Este array de semaforos e necessario para a comunicacao com o simulator.c */
 static sem_t *semaphores[NUMBER_OF_PIPES];
+
+/** */
+char *file_names[4] = {"orders0.txt", "orders1.txt", "orders2.txt", "orders3.txt"};
+
+int orders_to_generate = 0;
+
+int number_of_orders_per_second = 0;
 
 /**
  * Esta funcao verifica se um determinado ficheiro existe
@@ -40,64 +47,78 @@ FILE * is_file_exists(char* file_name) {
 
 
 /**
- * Esta função inicializa as threads que vao gerar ordens
- * aleatórias para dentro dos fifos
- */
-void start_threads() {
-	int *taskids[NUMBER_OF_PIPES];
-	pthread_t threads[NUMBER_OF_PIPES];
-	
-    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-    	taskids[i] = (int *) malloc(sizeof(int));
-    	*taskids[i] = i;
-		pthread_create(&threads[i], NULL, generate_orders, (void *) taskids[i]);
-    }   
-  
-    for(int i = 0; i < NUMBER_OF_PIPES; i++) {
-		pthread_join(threads[i], NULL);
-    }  
-}
-
-
-/**
  * Esta funcao le as ordens do ficheiro FILE_NAME_TO_READ e envia as pelo fifo0
  */
 void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
-	printf("A ler ordens do ficheiro orders.txt \n");
+	int fd = open(ficheiro, O_WRONLY);
+	printf("A ler ordens do ficheiro orders[%d].txt \n", fifo_number);
 	while(!feof(file)) {
 		transaction_t *transaction = transaction_from_file(file);
 		if(transaction != NULL) {
-			write(open(ficheiro, O_WRONLY), transaction, sizeof(transaction_t));
-			printf("%d -> %s", fifo_number, transaction_print(transaction));
+			write(fd, transaction, sizeof(transaction_t));
 			sem_post(semaphores[fifo_number]);
 		}
 	}
-	printf("A leitura do ficheiro orders.txt foi terminada \n");
+	printf("A leitura do ficheiro orders[%d].txt foi terminada \n", fifo_number);
 }
 
+/**
+ * Esta funcao escreve as ordens num determinado fifo e aciona o semaforo
+ * respeitante ao fifo em questão
+ */
+void write_orders(int fd, sem_t *sem, transaction_t * (*fp_transaction)()) {
+	for(;;) {
+		sleep(1);
+		transaction_t *transaction = (*fp_transaction)();
+		write(fd, transaction, sizeof(transaction_t));
+		sem_post(sem);
+	}
+}
 
 /**
- * Esta é a função invocada pelas threads e é a responsável por gerar
- * as ordens aleatóriamente. Estas ordens são posteriormente inseridas
- * nos fifos.
+ * Esta funcao vai verificar se:
+ * 1: Temos ordens para ler a partir de ficheiros
+ * 2: Não temos ficheiros vai gerar ordens aleatorias
+ * 3: Temos de criar a thread para o utilizador criar ordens
  */
-void * generate_orders(void* i) {
+void * thread_dispatcher(void* i) {
 	FILE *file;
 	int fifo_number = *((int*) i);
 	char ficheiro[8];
 	sprintf(ficheiro, "fifo%d", fifo_number);
-	if(fifo_number == 0 && (file = is_file_exists(FILE_NAME_TO_READ))) {
-		read_orders_from_file(file, ficheiro, fifo_number);
+	int fd = open(ficheiro, O_WRONLY);
+	if(fifo_number == 4) {
+		write_orders(fd, semaphores[fifo_number], transaction_manual_create);
 	} else {
-		printf("A gerar ordens random no %s \n", ficheiro);
-		for(;;) {
-			sleep(rand() % 10);
-			transaction_t *transaction = transaction_create();
-			write(open(ficheiro, O_WRONLY), transaction, sizeof(transaction_t));
-			printf("%d -> %s", fifo_number, transaction_print(transaction));
-			sem_post(semaphores[fifo_number]);
+		if(file = is_file_exists(file_names[fifo_number])) {
+			read_orders_from_file(file, ficheiro, fifo_number);
+		} else {
+			for(;;) {
+				write_orders(fd, semaphores[fifo_number], transaction_create);
+			}
 		}
-	}	
+	}
+}
+
+
+/**
+ * Esta função inicializa as threads que vao gerar ordens
+ * aleatórias para dentro dos fifos
+ */
+void start_threads() {
+	int *taskids[4];
+	pthread_t threads[4];
+	
+    for(int i = 0; i < 4; i++) {
+    	taskids[i] = (int *) malloc(sizeof(int));
+    	*taskids[i] = i;
+    	pthread_create(&threads[i], NULL, thread_dispatcher, (void *) taskids[i]);
+	}
+	  
+    for(int i = 0; i < 4; i++) {
+		pthread_join(threads[i], NULL);
+    } 
+    
 }
 
 
@@ -108,7 +129,8 @@ void * generate_orders(void* i) {
 void create_semaphores() {		
  	char semaphore[10];		
  	for(int i = 0; i < NUMBER_OF_PIPES; i++) {		
- 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);		
+ 		snprintf(semaphore, sizeof(semaphore), "semafore%d", i);
+ 		unlink(semaphore);	
  		semaphores[i] = sem_open(semaphore, O_CREAT, 00700, 0);  		
  	}		
 }
