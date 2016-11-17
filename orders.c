@@ -23,9 +23,7 @@
 #include "transaction.h"
 #include "orders.h"
 
-//#define NUMBER_OF_PIPES 5
-#define STDIN_THREAD NUMBER_OF_PIPES - 1
-#define FIFO_PERMISSIONS 0666
+#define STDIN_THREAD_NUMBER_OF_PIPES - 1
 
 /** Este array de semaforos e necessario para a comunicacao com o simulator.c */
 static sem_t *semaphores[NUMBER_OF_PIPES];
@@ -87,7 +85,7 @@ void * thread_dispatcher(void* i) {
 	char ficheiro[8];
 	sprintf(ficheiro, "fifo%d", fifo_number);
 	int fd = open(ficheiro, O_WRONLY);
-	if(fifo_number == 4) {
+	if(fifo_number == STDIN_THREAD_NUMBER_OF_PIPES) {
 		write_orders(fd, semaphores[fifo_number], transaction_manual_create);
 	} else {
 		if(file = is_file_exists(file_names[fifo_number])) {
@@ -109,6 +107,7 @@ void start_threads() {
 	int *taskids[4];
 	pthread_t threads[4];
 	
+	printf("Starting...\n");
     for(int i = 0; i < 4; i++) {
     	taskids[i] = (int *) malloc(sizeof(int));
     	*taskids[i] = i;
@@ -143,7 +142,7 @@ void create_fifos() {
 	char fifo[8];
 	for (int i = 0; i < NUMBER_OF_PIPES; i++) {
 		snprintf(fifo, sizeof(fifo), "fifo%d", i);	
-		if ((mkfifo(fifo, FIFO_PERMISSIONS) == -1) && (errno != EEXIST)) {
+		if ((mkfifo(fifo, FULL_PERMISSIONS) == -1) && (errno != EEXIST)) {
 			perror("Error creating named pipe\n");
 			exit(EXIT_FAILURE);
 		}

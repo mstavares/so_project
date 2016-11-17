@@ -38,6 +38,7 @@ int size_of_shared_memory = sizeof(transaction_t) * ORDERS;
  * entre o share.c e o simulator.c
  */
 void read_shared_memory() {
+	printf("Waiting for simulator.c openning.\n");
 	transaction_t data_read_from_sm[ORDERS];
 	for(;;){
 		sem_wait(sem);

@@ -32,7 +32,6 @@
 #include "orders.h"
 #include "queue.h"
 
-#define PERMISSIONS 0666
 #define NUMBER_OF_PROCESSING_THREADS 10
 #define MAIN_THREADS_TO_START 3
 #define INIT_THREADS 12
@@ -196,8 +195,6 @@ void allocate_orders(transaction_t *transaction) {
 void* dispatcher_thread() {
 	for(;;) {
 		sem_wait(&fifos_sem);
-		transaction_t *transaction = queue_pop(queue, ORDERS);
-		printf("%s", transaction_print(transaction));
 		allocate_orders(queue_pop(queue, ORDERS));
 	}
 }
@@ -222,9 +219,8 @@ void * read_orders(void* i) {
 		sem_wait(semaphores[pipe_number]);
 		transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 		read(fd, transaction, sizeof(transaction_t));
-		printf("%s", transaction_print(transaction));
-		//queue_push(queue, ORDERS, transaction);
-		//sem_post(&fifos_sem);
+		queue_push(queue, ORDERS, transaction);
+		sem_post(&fifos_sem);
 	}	
 }
 
@@ -238,7 +234,7 @@ void start() {
 	int j = 0;
 	pthread_t threads[number_of_threads];
 	
-	
+	printf("Waiting for orders.c openning.\n");
     for(int i = 0; i < NUMBER_OF_PROCESSING_THREADS; i++, j++) {
 		taskids[i] = (int *) malloc(sizeof(int));
 		*taskids[i] = i;
@@ -273,15 +269,16 @@ void create_sm_semaphore() {
  * Funcao que inicializa a memoria partilhada
  */
 void init_shared_memory() {
-	int shared_memory_id = shmget(SHARED_MEMORY_KEY, size_of_shared_memory, IPC_CREAT | PERMISSIONS);
+	int shared_memory_id = shmget(SHARED_MEMORY_KEY, size_of_shared_memory, IPC_CREAT | FULL_PERMISSIONS);
 	
 	if(shared_memory_id < 0) {
 		perror("shmget");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	
 	shared_memory = shmat(shared_memory_id, NULL, 0);
 }
+
 
 /**
  * Cria os semaforos para os repositorios
@@ -305,6 +302,16 @@ void init_semaphores() {
 	}
 }
 
+void send_pid_to_performance() {
+	char *fifo = "performance_pipe";
+	FILE *fifo_file = fopen(fifo, "w");
+	if ((mkfifo(fifo, FULL_PERMISSIONS) == -1) && (errno != EEXIST)) {
+		perror("Error creating named pipe\n");
+		exit(EXIT_FAILURE);
+	}
+	fprintf(fifo_file, "%d", getpid());
+	fclose(fifo_file);
+}
 
 /**
  * Inicializador do simulador
@@ -315,6 +322,7 @@ void setup() {
 	create_semaphores();
 	init_shared_memory();
 	create_sm_semaphore();
+	send_pid_to_performance();
 }
 
 

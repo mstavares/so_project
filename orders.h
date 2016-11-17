@@ -10,8 +10,11 @@
 #ifndef ORDERS_H
 #define ORDERS_H
 
-
+/** Numero de pipes para a comunicacao entre o orders.c e o simulator.c */
 #define NUMBER_OF_PIPES 5
+
+/** Define as permissoes de acesso aos fifos */
+#define FULL_PERMISSIONS 0666
 
 /**
  * Esta faz a inicializacao do orders.c
