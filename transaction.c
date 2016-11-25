@@ -22,6 +22,8 @@
 #include <unistd.h>
 #include "transaction.h"
 
+#define stdout_clear() while(scanf("%*c"))
+
 
 /** Este array guarda a lista de empresas existentes na bolsa */
 char *titles[NUMBER_OF_TITLES] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
@@ -76,9 +78,10 @@ transaction_t * transaction_create() {
  */
 transaction_t * transaction_manual_create() {
 	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-	char title[10];
+	char title[50];
 	strcpy(transaction->id, random_id());
 	printf("Introduza o nome de uma empresa cotada em bolsa: \n");
+	scanf("%s", title);
 	string_to_upper_case(title);
 	strcpy(transaction->title, title);
 	printf("Introduza o numero de acoes: \n");
@@ -136,7 +139,7 @@ int random_amount() {
  * O float devolvido estará entre 1 e 20
  */
 float random_value() {
-	return (float) (rand() % 20 - 10);
+	return (float) (rand() % 20 - 10) + 1;
 }
 
 

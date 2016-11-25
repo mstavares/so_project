@@ -10,6 +10,7 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
+
 /**
  * Esta funcao ordena a lista com recurso ao bubble sort
  */

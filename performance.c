@@ -31,6 +31,7 @@ void print_performance(char *simulator_pid, int refreshing_time) {
 			split = strtok(buff," ");
 			 while (split != NULL) {
 			 	if(strcmp(split, simulator_pid) == 0) {
+			 		printf("\033[H\033[J");
 			 		printf("%%CPU %%MEM \n");
 			 		for(int i = 0; i < 2; i++) {
 			 			split = strtok(NULL, " ");

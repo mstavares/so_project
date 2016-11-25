@@ -2,8 +2,10 @@
  * FICHEIRO: orders.c
  * DESCRICAO:
  *   Este programa cria ordens aleatorias, le ordens atraves de ficheiros
- *   e atraves do teclado.
- *   Estas ordens sao escritas em cinco pipes
+ *   e atraves do teclado. Estas ordens sao escritas em cinco pipes.
+ *
+ *	 Limpar o ecra
+ *	 http://stackoverflow.com/questions/17271576/clear-screen-in-c-and-c-on-unix-based-system
  *
  * AUTOR: Miguel Tavares - 21304351
 ***********************************************************************/
@@ -23,39 +25,74 @@
 #include "transaction.h"
 #include "orders.h"
 
-#define STDIN_THREAD_NUMBER_OF_PIPES - 1
+#define STDIN_THREAD 0
 
 /** Este array de semaforos e necessario para a comunicacao com o simulator.c */
 static sem_t *semaphores[NUMBER_OF_PIPES];
 
-/** */
-char *file_names[4] = {"orders0.txt", "orders1.txt", "orders2.txt", "orders3.txt"};
+/** Ficheiros onde estao as ordens geradas aleatoriamente */
+char *file_names[4] = {"orders1.txt", "orders2.txt", "orders3.txt", "orders4.txt"};
 
-int orders_to_generate = 0;
+/** Este mutex gere o acesso aos thread ids */
+pthread_mutex_t id_lock;
 
-int number_of_orders_per_second = 0;
+/** Este mutex gere o acesso ao ficheiro das ordens enviadas */
+static pthread_mutex_t orders_lock;
+
+
+/**
+ * Funcao que escreve as ordens recebidas
+ */
+void write_transaction_to_file(transaction_t *transaction) {
+	FILE * file = fopen("output/enviadas.log", "a");
+	fprintf(file, "%s", transaction_print(transaction));
+	fclose(file);
+}
+
+
+/**
+ * Esta funcao devolve um id auto incrementavel para cada thread
+ */
+int get_thread_id() {
+	static int fifo_number;
+	int thread_id = 0;
+	pthread_mutex_lock(&id_lock);
+	thread_id = fifo_number;
+	fifo_number++;	
+	pthread_mutex_unlock(&id_lock);
+	return thread_id;
+}
+
 
 /**
  * Esta funcao verifica se um determinado ficheiro existe
  * se sim, retorna um hander para o mesmo.
  */
 FILE * is_file_exists(char* file_name) {
-	return fopen(file_name, "r");
+	char path[20] = "ficheiros/";
+	strcat(path, file_name);	
+	return fopen(path, "r");
 }
 
 
 /**
  * Esta funcao le as ordens do ficheiro FILE_NAME_TO_READ e envia as pelo fifo0
  */
-void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
+void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number, thread_parameter_t *thread_parameter) {
+	static int orders_generated;
 	int fd = open(ficheiro, O_WRONLY);
 	printf("A ler ordens do ficheiro orders[%d].txt \n", fifo_number);
-	while(!feof(file)) {
+	while(!feof(file) && thread_parameter->number_of_orders > orders_generated) {	
 		transaction_t *transaction = transaction_from_file(file);
 		if(transaction != NULL) {
+			pthread_mutex_lock(&orders_lock);
+			write_transaction_to_file(transaction);
+			pthread_mutex_unlock(&orders_lock);
 			write(fd, transaction, sizeof(transaction_t));
 			sem_post(semaphores[fifo_number]);
+			orders_generated++;
 		}
+		sleep(thread_parameter->orders_per_second);
 	}
 	printf("A leitura do ficheiro orders[%d].txt foi terminada \n", fifo_number);
 }
@@ -64,14 +101,15 @@ void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number) {
  * Esta funcao escreve as ordens num determinado fifo e aciona o semaforo
  * respeitante ao fifo em questão
  */
-void write_orders(int fd, sem_t *sem, transaction_t * (*fp_transaction)()) {
+void write_orders(int fd, sem_t *sem) {
 	for(;;) {
-		sleep(1);
-		transaction_t *transaction = (*fp_transaction)();
+		transaction_t *transaction = transaction_manual_create();
+		printf("%s", transaction_print(transaction));
 		write(fd, transaction, sizeof(transaction_t));
 		sem_post(sem);
 	}
 }
+
 
 /**
  * Esta funcao vai verificar se:
@@ -79,21 +117,21 @@ void write_orders(int fd, sem_t *sem, transaction_t * (*fp_transaction)()) {
  * 2: Não temos ficheiros vai gerar ordens aleatorias
  * 3: Temos de criar a thread para o utilizador criar ordens
  */
-void * thread_dispatcher(void* i) {
+void * thread_dispatcher(void* thread_parameter_r) {
 	FILE *file;
-	int fifo_number = *((int*) i);
-	char ficheiro[8];
+	char ficheiro[20];
+	thread_parameter_t *thread_parameter = (thread_parameter_t *) thread_parameter_r;
+	int fifo_number = get_thread_id();
 	sprintf(ficheiro, "fifo%d", fifo_number);
+	printf("A escrever no %s \n", ficheiro);
 	int fd = open(ficheiro, O_WRONLY);
-	if(fifo_number == STDIN_THREAD_NUMBER_OF_PIPES) {
-		write_orders(fd, semaphores[fifo_number], transaction_manual_create);
+	if(fifo_number == STDIN_THREAD) {
+		write_orders(fd, semaphores[fifo_number]);
 	} else {
-		if(file = is_file_exists(file_names[fifo_number])) {
-			read_orders_from_file(file, ficheiro, fifo_number);
+		if(file = is_file_exists(file_names[fifo_number - 1])) {
+			read_orders_from_file(file, ficheiro, fifo_number, thread_parameter);
 		} else {
-			for(;;) {
-				write_orders(fd, semaphores[fifo_number], transaction_create);
-			}
+			printf("O ficheiro %s nao existe.\n", file_names[fifo_number - 1]);
 		}
 	}
 }
@@ -103,21 +141,17 @@ void * thread_dispatcher(void* i) {
  * Esta função inicializa as threads que vao gerar ordens
  * aleatórias para dentro dos fifos
  */
-void start_threads() {
-	int *taskids[4];
-	pthread_t threads[4];
+void start_threads(thread_parameter_t *thread_parameter) {
+	pthread_t threads[thread_parameter->number_of_fifos];
+	printf("A aguardar pelo simulator.c \n");
 	
-	printf("Starting...\n");
-    for(int i = 0; i < 4; i++) {
-    	taskids[i] = (int *) malloc(sizeof(int));
-    	*taskids[i] = i;
-    	pthread_create(&threads[i], NULL, thread_dispatcher, (void *) taskids[i]);
+    for(int i = 0; i < thread_parameter->number_of_fifos; i++) {
+    	pthread_create(&threads[i], NULL, thread_dispatcher, (void *) thread_parameter);
 	}
-	  
-    for(int i = 0; i < 4; i++) {
+	
+    for(int i = 0; i < thread_parameter->number_of_fifos; i++) {
 		pthread_join(threads[i], NULL);
-    } 
-    
+    }
 }
 
 
@@ -163,6 +197,20 @@ void setup() {
  * Inicio do programa
  */
 int main(int argc, char* argv[]) {
+	thread_parameter_t *thread_parameter = (thread_parameter_t *) malloc(sizeof(thread_parameter_t));
+	
+	if(argc < 3 || argc > 5) {
+		printf("./orders <numero_de_ordens> <numero_de_ordens_por_segundo> <numero_de_fifos> \n");
+	} else if (argc == 4) {
+		thread_parameter->number_of_orders = atoi(argv[1]);
+		thread_parameter->orders_per_second = atoi(argv[2]);
+		thread_parameter->number_of_fifos = atoi(argv[3]);
+	} else {
+		thread_parameter->number_of_orders = atoi(argv[1]);
+		thread_parameter->orders_per_second = atoi(argv[2]);
+		thread_parameter->number_of_fifos = 0;
+	}
+	
 	setup();
-	start_threads();	
+	start_threads(thread_parameter);	
 }

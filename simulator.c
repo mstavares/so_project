@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <uuid/uuid.h>
 #include <unistd.h>
-#include <semaphore.h>
 #include <signal.h>
 #include <sys/mman.h>
 #include "transaction.h"
@@ -77,17 +76,19 @@ transaction_t *shared_memory;
 /** Tamanho da memoria partilhada */
 long size_of_shared_memory = sizeof(transaction_t) * ORDERS;
 
-int contador = 0;
-int file_contador = 0;
-int ficheiros = 0;
+/** Este mutex gere o acesso à principal queue de orders */
+pthread_mutex_t queue_lock;
+
 
 /**
  * Funcao que escreve no ficheiro de logs
  */
-void write_file(int amount, char* title, float value) {
+void write_to_file(char* string_to_write, char* file_name) {
 	pthread_mutex_lock(&lock);
-	FILE * file = fopen("simulador.log", "a");
-	fprintf(file, "Transacionadas %d ações de %s por %.2f\n", amount, title, value);
+	char path[50] = "output/";
+	strcat(path, file_name);
+	FILE * file = fopen(path, "a");
+	fprintf(file, "%s", string_to_write);
 	fclose(file);
 	pthread_mutex_unlock(&lock);
 }
@@ -96,32 +97,50 @@ void write_file(int amount, char* title, float value) {
 /**
  * Thread que processa os repositorios e escreve no ficheiro de logs
  */
-void* process_orders(void *received) {
+void * process_orders(void *received) {
+	char string[50];
 	int position =  *((int *) received);
 	transaction_t *array = transactions[position];
+	char* transactions_file_name = "simulador.log";
 	for(;;) {
-		sem_wait(&processing_semaphores[position]);
-		queue_sort(array, ORDERS);
+		sem_wait(&processing_semaphores[position]);	
 		for(int i = 0; i < ORDERS; i++) {
-			for(int j = 0; j < ORDERS; j++) {
-				if((array + j)->value < 0 && (array + i)->value >= fabs((array + j)->value)) {
-					if((array + i)->amount > (array + j)->amount) {
-						/** Todas as acções foram transacionadas */
-						printf("1: Transacionadas %d ações de %s por %.2f\n", (array + j)->amount, 
-							(array + j)->title ,fabsf((array + j)->value));						
-						write_file((array + j)->amount, (array + j)->title, fabs((array + j)->value));	
-						(array + i)->amount -= (array + j)->amount;
-						(array + j)->amount = 0;							
-						memset(array + j, 0, sizeof(transaction_t));
+			if(fabs((array + i)->value == 0)) {
+				break;
+			} else {
+				for(int j = 0; j < ORDERS; j++) {
+					if(fabs((array + j)->value == 0)) {
+						break;
 					} else {
-						/** As ações nao foram totalmente transacionadas */
-						printf("2: Transacionadas %d ações de %s por %.2f\n", (array + i)->amount, 
-							(array + i)->title ,fabsf((array + i)->value));				
-						write_file((array + i)->amount, (array + i)->title, fabs((array + i)->value));							
-						(array + j)->amount -= (array + i)->amount;
-						(array + i)->amount = 0;
-						memset(array + i, 0, sizeof(transaction_t));
-					}	
+						if((array + j)->value < 0 && (array + i)->value >= fabs((array + j)->value)) {
+							if((array + i)->amount > (array + j)->amount) {
+								/** Todas as acções foram transacionadas */
+								printf("Transacionadas %d ações de %s por %.2f\n", abs((array + j)->amount), 
+									(array + j)->title ,fabsf((array + j)->value));
+								/** Escreve o o registo da transacao no ficheiro simulador.log */
+								sprintf(string, "Transacionadas %d ações de %s por %.2f\n", (array + j)->amount,
+									 (array + j)->title, fabs((array + j)->value));
+								write_to_file(string, transactions_file_name);
+								(array + i)->amount -= (array + j)->amount;						
+								memset(array + j, 0, sizeof(transaction_t));
+							} else {
+								/** As ações nao foram totalmente transacionadas */
+								printf("Transacionadas %d ações de %s por %.2f\n", abs((array + i)->amount), 
+									(array + j)->title ,fabsf((array + j)->value));	
+								/** Escreve o o registo da transacao no ficheiro simulador.log */						
+								sprintf(string, "Transacionadas %d ações de %s por %.2f\n", (array + i)->amount,
+									 (array + j)->title, fabs((array + j)->value));
+								write_to_file(string, transactions_file_name);
+								if((array + i)->amount == (array + j)->amount) {
+									memset(array + i, 0, sizeof(transaction_t));
+									memset(array + j, 0, sizeof(transaction_t));
+								} else {						
+									(array + j)->amount -= (array + i)->amount;
+									memset(array + i, 0, sizeof(transaction_t));
+								}		
+							}
+						}
+					}
 				}
 			}
 		}
@@ -141,6 +160,8 @@ void write_on_shared_memory(transaction_t array[]) {
  * Faz o trabalho da dispatcher thread
  */
 void allocate_orders(transaction_t *transaction) {
+	char *allocated_file_name = "alocadas.log";
+	write_to_file(transaction_print(transaction), allocated_file_name);
 	if(strcmp(transaction->title, titles[0]) == 0) {
 		queue_push(Altri, ORDERS, transaction);
 		sem_post(&processing_semaphores[0]);
@@ -185,6 +206,7 @@ void allocate_orders(transaction_t *transaction) {
 	sem_post(shared_memory_sem);
 }
 
+
 /**
  * A dispatcher thread é responsável por:
  * 1: Ler as ordens dos 5 fifos
@@ -192,10 +214,14 @@ void allocate_orders(transaction_t *transaction) {
  * 3: Escrever na memoria partilhada
  * 4: Acionar o semaforo da memoria partilhada
  */
-void* dispatcher_thread() {
+void * dispatcher_thread() {
+	int i = 0;
 	for(;;) {
+		sleep(1);
 		sem_wait(&fifos_sem);
+		pthread_mutex_lock(&queue_lock);
 		allocate_orders(queue_pop(queue, ORDERS));
+		pthread_mutex_unlock(&queue_lock);
 	}
 }
 
@@ -205,21 +231,19 @@ void* dispatcher_thread() {
  */
 void * read_orders(void* i) {
 	char ficheiro[8];
+	char *received_file_name = "recebidas.log";
 	int pipe_number = *((int *) i);
 	sprintf(ficheiro, "fifo%d", pipe_number);
 	printf("A ler ordens do %s \n", ficheiro);
 	int fd = open(ficheiro, O_RDONLY);		
-	
-	int val = 0;
-	
 	for(;;) {
-		sleep(1);
-		sem_getvalue(semaphores[pipe_number], &val);
-		printf("\nantes do wait %d\n", val);
 		sem_wait(semaphores[pipe_number]);
 		transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
 		read(fd, transaction, sizeof(transaction_t));
+		pthread_mutex_lock(&queue_lock);
+		write_to_file(transaction_print(transaction), received_file_name);
 		queue_push(queue, ORDERS, transaction);
+		pthread_mutex_unlock(&queue_lock);
 		sem_post(&fifos_sem);
 	}	
 }
@@ -234,7 +258,7 @@ void start() {
 	int j = 0;
 	pthread_t threads[number_of_threads];
 	
-	printf("Waiting for orders.c openning.\n");
+	printf("A aguardar por orders.c \n");
     for(int i = 0; i < NUMBER_OF_PROCESSING_THREADS; i++, j++) {
 		taskids[i] = (int *) malloc(sizeof(int));
 		*taskids[i] = i;
@@ -302,7 +326,10 @@ void init_semaphores() {
 	}
 }
 
-void send_pid_to_performance() {
+/**
+ * Esta funcao envia o pid do simulator.c para o performace.c através de um pipe.
+ */
+void * send_pid_to_performance() {
 	char *fifo = "performance_pipe";
 	FILE *fifo_file = fopen(fifo, "w");
 	if ((mkfifo(fifo, FULL_PERMISSIONS) == -1) && (errno != EEXIST)) {
@@ -313,16 +340,18 @@ void send_pid_to_performance() {
 	fclose(fifo_file);
 }
 
+
 /**
  * Inicializador do simulador
  */
 void setup() {
+	pthread_t thread;
 	FILE *fifos[NUMBER_OF_PIPES];
 	init_semaphores();
 	create_semaphores();
 	init_shared_memory();
 	create_sm_semaphore();
-	send_pid_to_performance();
+	pthread_create(&thread, NULL, send_pid_to_performance, NULL);
 }
 
 

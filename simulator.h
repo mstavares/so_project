@@ -27,6 +27,12 @@ void setup();
 
 
 /**
+ * Esta funcao envia o pid do simulator.c para o performace.c através de um pipe.
+ */
+void * send_pid_to_performance();
+
+
+/**
  * Esta funcao abre os fifos para leitura.
  */
 void open_fifos(FILE *fifos[]);
@@ -118,7 +124,7 @@ void* process_orders(void *received);
 /**
  * Funcao que escreve no ficheiro de logs
  */
-void write_file(int amount, char* title, float value);
+void write_to_file(char* string_to_write, char* file_name);
 
 
 #endif
