@@ -97,6 +97,7 @@ void read_orders_from_file(FILE *file, char* ficheiro, int fifo_number, thread_p
 	printf("A leitura do ficheiro orders[%d].txt foi terminada \n", fifo_number);
 }
 
+
 /**
  * Esta funcao escreve as ordens num determinado fifo e aciona o semaforo
  * respeitante ao fifo em questão
@@ -183,11 +184,16 @@ void create_fifos() {
 	}
 }
 
+void load_uuids() {
+	read_uuids_from_file("uuid.txt");
+}
+
 
 /**
  * Esta faz a inicializacao do orders.c
  */
 void setup() {
+	load_uuids();
 	create_fifos();
 	create_semaphores();
 }

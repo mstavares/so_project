@@ -115,21 +115,21 @@ void * process_orders(void *received) {
 						if((array + j)->value < 0 && (array + i)->value >= fabs((array + j)->value)) {
 							if((array + i)->amount > (array + j)->amount) {
 								/** Todas as acções foram transacionadas */
-								printf("Transacionadas %d ações de %s por %.2f\n", abs((array + j)->amount), 
-									(array + j)->title ,fabsf((array + j)->value));
+								printf("%s transacionou %d ações de %s por %.2f em %s\n", (array + j)->id, 
+								abs((array + j)->amount), (array + j)->title ,fabsf((array + j)->value), (array + j)->timestamp);
 								/** Escreve o o registo da transacao no ficheiro simulador.log */
-								sprintf(string, "Transacionadas %d ações de %s por %.2f\n", (array + j)->amount,
-									 (array + j)->title, fabs((array + j)->value));
+								sprintf(string, "%s transacionou %d ações de %s por %.2f em %s\n", (array + j)->id, 
+								(array + j)->amount, (array + j)->title, fabs((array + j)->value), (array + j)->timestamp);	 
 								write_to_file(string, transactions_file_name);
 								(array + i)->amount -= (array + j)->amount;						
 								memset(array + j, 0, sizeof(transaction_t));
 							} else {
 								/** As ações nao foram totalmente transacionadas */
-								printf("Transacionadas %d ações de %s por %.2f\n", abs((array + i)->amount), 
-									(array + j)->title ,fabsf((array + j)->value));	
-								/** Escreve o o registo da transacao no ficheiro simulador.log */						
-								sprintf(string, "Transacionadas %d ações de %s por %.2f\n", (array + i)->amount,
-									 (array + j)->title, fabs((array + j)->value));
+								printf("%s transacionou %d ações de %s por %.2f em %s\n", (array + i)->id, 
+								abs((array + i)->amount), (array + j)->title ,fabsf((array + j)->value), (array + i)->timestamp);	
+								/** Escreve o o registo da transacao no ficheiro simulador.log */			
+								sprintf(string, "%s transacionou %d ações de %s por %.2f em %s\n", (array + i)->id, 
+								(array + i)->amount, (array + j)->title, fabs((array + j)->value), (array + i)->timestamp);	
 								write_to_file(string, transactions_file_name);
 								if((array + i)->amount == (array + j)->amount) {
 									memset(array + i, 0, sizeof(transaction_t));
@@ -294,12 +294,10 @@ void create_sm_semaphore() {
  */
 void init_shared_memory() {
 	int shared_memory_id = shmget(SHARED_MEMORY_KEY, size_of_shared_memory, IPC_CREAT | FULL_PERMISSIONS);
-	
 	if(shared_memory_id < 0) {
 		perror("shmget");
 		exit(EXIT_FAILURE);
 	}
-	
 	shared_memory = shmat(shared_memory_id, NULL, 0);
 }
 

@@ -28,18 +28,30 @@
 /** Este array guarda a lista de empresas existentes na bolsa */
 char *titles[NUMBER_OF_TITLES] = {"ALTRI", "BPI", "BCP", "CTT", "EDP", "GALP", "NOS", "PHAROL", "REN", "SEMAPA"};
 
+char uuid[NUMBER_OF_UUID][SIZE_OF_UUID];
+
+int uuids_allocated = 0;
+
+
+void read_uuids_from_file(char* file_name) {
+	char path[20] = "ficheiros/";
+	strcat(path, file_name);	
+	FILE *file = fopen(path, "r");
+
+	while(!feof(file)) {
+		fscanf(file, "%s", uuid[uuids_allocated]);
+		uuids_allocated++;
+	}
+	
+}
+
 
 /**
  * Esta função cria um UUID aleatoriamente
  * Os UUID random têm a forma xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
  */
 char* random_id() {
-	static char str[37]; 
-	uuid_t uuid;
-	uuid_clear(uuid);
-	uuid_generate_random(uuid);
-	uuid_unparse(uuid,str); 
-	return str; 
+	return uuid[rand() % uuids_allocated];
 }
 
 
@@ -48,10 +60,9 @@ char* random_id() {
  */
 transaction_t * transaction_from_file(FILE *file) {
 	transaction_t *transaction = (transaction_t *) malloc(sizeof(transaction_t));
-	int bytes = fscanf(file, "%s %f %d", transaction->title, &transaction->value,
-			&transaction->amount);
+	int bytes = fscanf(file, "%s %f %d", transaction->title, &transaction->value, &transaction->amount);
 	strcpy(transaction->id, random_id());
-	transaction->timestamp = get_timestamp();
+	strcpy(transaction->timestamp, get_time());
 	if(bytes < 0) {
 		transaction = NULL;
 	}
@@ -68,7 +79,7 @@ transaction_t * transaction_create() {
 	strcpy(transaction->title, random_title());
 	transaction->value = random_value();
 	transaction->amount = random_amount();
-	transaction->timestamp = get_timestamp();
+	strcpy(transaction->timestamp, get_time());
 	return transaction;
 }
 
@@ -88,20 +99,8 @@ transaction_t * transaction_manual_create() {
 	scanf("%d", &transaction->amount);
 	printf("Introduza o valor da transacao: \n");
 	scanf("%f", &transaction->value);
-	transaction->timestamp = get_timestamp();
+	strcpy(transaction->timestamp, get_time());
 	return transaction;
-}
-
-
-/**
- * Esta funcao permite clonar transacoes
- */
-void transaction_clone(transaction_t *destination, transaction_t *source) {
-	strcpy(destination->id, source->id);
-	strcpy(destination->title, source->title);
-	destination->value = source->value;
-	destination->amount = source->amount;
-	destination->timestamp = source->timestamp;
 }
 
 
@@ -110,8 +109,8 @@ void transaction_clone(transaction_t *destination, transaction_t *source) {
  */
 char* transaction_print(transaction_t *transaction) {
 	static char str[50];
-	sprintf(str, "%s %s %.2f %d %s", transaction->id, transaction->title,
-		transaction->value, transaction->amount, timestamp_to_string(transaction->timestamp));
+	sprintf(str, "%s %s %.2f %d %s \n", transaction->id, transaction->title,
+		transaction->value, transaction->amount, transaction->timestamp);
 	return str;
 }
 
@@ -144,19 +143,17 @@ float random_value() {
 
 
 /**
- * Esta função devolve um timestamp no formato long
+ * Esta função devolve um timestamp no formato char*
  */
-long get_timestamp() {
-	time_t now = time(NULL);
-	return now;
-}
-
-
-/**
- * Esta função devolve um timestamp no formato long
- */
-char* timestamp_to_string(time_t now) {
-	return asctime (localtime (&now));
+char* get_time() {
+    static char buff[100];
+    char milisec[10];
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    strftime(buff, sizeof buff, "%Y-%m-%d %T", gmtime(&ts.tv_sec));
+    sprintf(milisec, ".%ld", ts.tv_nsec);
+    strcat(buff, milisec);
+    return buff;
 }
 
 

@@ -11,18 +11,25 @@
 #define TRANSACTION_H
 
 #define NUMBER_OF_TITLES 10
+#define SIZE_OF_UUID 37
+#define NUMBER_OF_UUID 100
+
 #include <time.h>
 
 /** Este array guarda a lista de empresas existentes na bolsa */
 extern char *titles[NUMBER_OF_TITLES];
 
 typedef struct {
-	char id[37];
+	char id[SIZE_OF_UUID];
 	char title[10];
 	float value;
 	int amount;
-	time_t timestamp;
+	char timestamp[50];
 }transaction_t;
+
+
+void teste();
+void read_uuids_from_file(char* file_name);
 
 /**
  * Esta função devolve um timestamp no formato long
@@ -31,9 +38,9 @@ char* timestamp_to_string(time_t now);
 
 
 /**
- * Esta função devolve um timestamp no formato long
+ * Esta função devolve um timestamp no formato char*
  */
-long get_timestamp();
+char* get_time();
 
 
 /**
@@ -60,12 +67,6 @@ char* random_title();
  * Esta funcao imprime todos os detalhes de uma transação
  */
 char* transaction_print(transaction_t *transaction);
-
-
-/**
- * Esta funcao permite clonar transacoes
- */
-void transaction_clone(transaction_t *destination, transaction_t *source);
 
 
 /**
