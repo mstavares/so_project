@@ -1,7 +1,7 @@
 /**********************************************************************
  * FICHEIRO: share.h
  * DESCRICAO:
- *   Este ficheiro contem os protopicos e os defines necessarios para o
+ *   Este ficheiro contem os prototicos e os defines necessarios para o
  *   share.c
  *
  * AUTOR: Miguel Tavares - 21304351

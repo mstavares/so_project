@@ -28,8 +28,11 @@ typedef struct {
 }transaction_t;
 
 
-void teste();
+/**
+ * Esta função le os uuids do ficheiro uuid.txt
+ */
 void read_uuids_from_file(char* file_name);
+
 
 /**
  * Esta função devolve um timestamp no formato long

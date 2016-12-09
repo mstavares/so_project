@@ -1,3 +1,11 @@
+/**********************************************************************
+ * FICHEIRO: performance.c
+ * DESCRICAO:
+ *   Este ficheiro apresenta ao utilizador a performance do programa simulator
+ *
+ * AUTOR: Miguel Tavares - 21304351
+***********************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -5,10 +13,14 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <fcntl.h>
+#include "performance.h"
 
 #define REFRESHING_TIME 2
 
-
+/**
+ * Esta funcao recebe o pid do simulator através de um pipe.
+ * Este pid é utilizado para apresentar a performance do simulator.
+ */
 int receive_simulator_pid() {
 	int simulator_pid;
 	char* fifo = "performance_pipe";
@@ -18,6 +30,11 @@ int receive_simulator_pid() {
 	return simulator_pid;
 }
 
+
+/**
+ * Esta funcao vai fazer o parse do ps aux e apresentar apenas o CPU e o MEM
+ * do pid recebido.
+ */
 void print_performance(char *simulator_pid, int refreshing_time) {
 	FILE *in;
 	char buff[512];
@@ -48,6 +65,10 @@ void print_performance(char *simulator_pid, int refreshing_time) {
 	}
 }
 
+
+/**
+ * Esta funcao inicializa o programa performance
+ */
 void start() {
 	char simulator_pid[10];
 	printf("Waiting for simulator.c openning.\n");
@@ -55,6 +76,10 @@ void start() {
 	print_performance(simulator_pid, REFRESHING_TIME);
 }
 
+
+/**
+ * Inicia o programa
+ */
 int main() {
 	start();	
 }
